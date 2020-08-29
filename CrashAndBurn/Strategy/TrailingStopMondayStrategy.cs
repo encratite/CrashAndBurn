@@ -9,21 +9,44 @@ namespace CrashAndBurn.Strategy
         {
         }
 
+        public override void Buy(StockData stockData)
+        {
+            if (IsMonday(stockData))
+            {
+                base.Buy(stockData);
+            }
+        }
+
         public override void ProcessStockData(StockData stockData)
         {
-            if (MaximumPrice.HasValue && stockData.High > MaximumPrice)
+            if (FirstPurchase)
             {
-                MaximumPrice = stockData.High;
-                SetTrailingStop(stockData.High);
+                if (IsMonday(stockData))
+                {
+                    Buy(stockData);
+                }
             }
-            if (TrailingStop.HasValue && stockData.Low <= TrailingStop.Value)
+            else
             {
-                Sell(stockData, true);
+                if (MaximumPrice.HasValue && stockData.High > MaximumPrice)
+                {
+                    MaximumPrice = stockData.High;
+                    SetTrailingStop(stockData.High);
+                }
+                if (TrailingStop.HasValue && stockData.Low <= TrailingStop.Value)
+                {
+                    Sell(stockData, true);
+                }
+                else if (RecoveryDate.HasValue && stockData.Date >= RecoveryDate.Value && IsMonday(stockData))
+                {
+                    Buy(stockData);
+                }
             }
-            else if (RecoveryDate.HasValue && stockData.Date >= RecoveryDate.Value && stockData.Date.DayOfWeek == DayOfWeek.Monday)
-            {
-                Buy(stockData);
-            }
+        }
+
+        private bool IsMonday(StockData stockData)
+        {
+            return stockData.Date.DayOfWeek == DayOfWeek.Monday;
         }
     }
 }

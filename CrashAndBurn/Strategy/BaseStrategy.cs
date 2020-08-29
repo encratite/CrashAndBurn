@@ -7,8 +7,9 @@ namespace CrashAndBurn.Strategy
         public string Name { get; private set; }
         public decimal Cash { get; private set; }
 
-        private int _Shares;
+        protected bool FirstPurchase { get; set; }
 
+        private int _Shares;
         private decimal _OrderFees;
 
         public BaseStrategy(string name)
@@ -19,6 +20,7 @@ namespace CrashAndBurn.Strategy
         public void Initialize(decimal initialCash, decimal orderFees)
         {
             Cash = initialCash;
+            FirstPurchase = true;
             _Shares = 0;
             _OrderFees = orderFees;
         }
@@ -31,6 +33,7 @@ namespace CrashAndBurn.Strategy
                 Cash -= _OrderFees;
                 _Shares = (int)Math.Floor((Cash - _OrderFees) / price);
                 Cash -= _Shares * price;
+                FirstPurchase = false;
             }
         }
 
