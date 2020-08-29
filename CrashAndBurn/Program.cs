@@ -1,6 +1,7 @@
 ﻿using CrashAndBurn.Strategy;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -17,7 +18,7 @@ namespace CrashAndBurn
             {
                 var assembly = Assembly.GetExecutingAssembly();
                 var name = assembly.GetName();
-                Console.WriteLine($"{name.Name} <path to .csv file containing Yahoo! Finance dump>");
+                WriteLine($"{name.Name} <path to .csv file containing Yahoo! Finance dump>");
                 return;
             }
             string csvPath = arguments[0];
@@ -68,15 +69,15 @@ namespace CrashAndBurn
         {
             const decimal initialCash = 100000.0m;
             const decimal orderFees = 10.0m;
-            var refrenceStrategy = new BuyAndHoldStrategy();
+            var referenceStrategy = new BuyAndHoldStrategy();
             var strategies = new List<BaseStrategy>
             {
-                refrenceStrategy
+                referenceStrategy
             };
             for (decimal trailingStopPercentage = 0.04m; trailingStopPercentage <= 0.14m; trailingStopPercentage += 0.02m)
             {
                 const int daysPerWeek = 7;
-                for (int recoveryDays = 2 * daysPerWeek; recoveryDays <= 12 * daysPerWeek; recoveryDays += 2 * daysPerWeek)
+                for (int recoveryDays = daysPerWeek; recoveryDays <= 32 * daysPerWeek; recoveryDays *= 2)
                 {
                     var strategy = new TrailingStopStrategy(trailingStopPercentage, recoveryDays);
                     strategies.Add(strategy);
@@ -100,17 +101,66 @@ namespace CrashAndBurn
                 strategy.Sell(adjustedHistory.Last(), false);
             }
             strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
-            Console.WriteLine($"Strategies sorted by returns, starting with {initialCash:C0} on {adjustedHistory.First().Date.ToShortDateString()}:");
+            WriteLine($"Strategies sorted by returns, starting with {initialCash:C0} on {adjustedHistory.First().Date.ToShortDateString()}:");
             var bestStrategies = strategies.Take(10).ToList();
-            if (!bestStrategies.Contains(refrenceStrategy))
+            if (!bestStrategies.Contains(referenceStrategy))
             {
                 bestStrategies.Remove(bestStrategies.Last());
-                bestStrategies.Add(refrenceStrategy);
+                bestStrategies.Add(referenceStrategy);
             }
             foreach (var strategy in bestStrategies)
             {
-                Console.WriteLine($"  {strategy.Name}: {strategy.Cash:C2}");
+                decimal performance = strategy.Cash / referenceStrategy.Cash - 1.0m;
+                if (object.ReferenceEquals(strategy, referenceStrategy))
+                {
+                    WriteLine($"  {strategy.Name}: {strategy.Cash:C2} (reference strategy)", ConsoleColor.White);
+                }
+                else
+                {
+                    Write($"  {strategy.Name}: {strategy.Cash:C2} (");
+                    var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
+                    Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
+                    WriteLine(")");
+                }
             }
+            WriteLine(string.Empty);
+        }
+
+        private static void WithColor(ConsoleColor? color, Action action)
+        {
+            if (color.HasValue)
+            {
+                var originalForegroundColor = Console.ForegroundColor;
+                Console.ForegroundColor = color.Value;
+                try
+                {
+                    action();
+                }
+                finally
+                {
+                    Console.ForegroundColor = originalForegroundColor;
+                }
+            }
+            else
+            {
+                action();
+            }
+        }
+
+        private static void WriteLine(string text, ConsoleColor? color = null)
+        {
+            WithColor(color, () =>
+            {
+                Console.WriteLine(text);
+            });
+        }
+
+        private static void Write(string text, ConsoleColor? color = null)
+        {
+            WithColor(color, () =>
+            {
+                Console.Write(text);
+            });
         }
     }
 }

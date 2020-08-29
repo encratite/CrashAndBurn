@@ -5,7 +5,7 @@ namespace CrashAndBurn.Strategy
     class TrailingStopMondayStrategy : TrailingStopStrategy
     {
         public TrailingStopMondayStrategy(decimal trailingStopPercentage, int recoveryDays)
-            : base($"Trailing stop, buy on Monday ({trailingStopPercentage:P1}, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
+            : base($"Trailing stop, buy on Mondays ({trailingStopPercentage:P1}, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
         {
         }
 
