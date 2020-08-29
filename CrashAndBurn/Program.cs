@@ -1,17 +1,20 @@
 ﻿using CrashAndBurn.Strategy;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace CrashAndBurn
 {
     class Program
     {
+        private const decimal _InitialCash = 100000.0m;
+        private const decimal _OrderFees = 10.0m;
+        private const decimal _CapitalGainsTax = 0.25m;
+
         static void Main(string[] arguments)
         {
             if (arguments.Length != 1)
@@ -23,8 +26,8 @@ namespace CrashAndBurn
             }
             string csvPath = arguments[0];
             var history = ReadStockHistory(csvPath);
-            EvaluateStrategies(history);
-            for (int year = 1970; year < 2000; year += 10)
+            /*
+            for (int year = 1960; year < 2000; year += 10)
             {
                 EvaluateStrategies(history, year);
             }
@@ -32,6 +35,19 @@ namespace CrashAndBurn
             {
                 EvaluateStrategies(history, year);
             }
+            */
+            var output = new StringBuilder();
+            for (int year = 1930; year < DateTime.Now.Year; year += 5)
+            {
+                EvaluateStrategies(output, history, year, year + 20);
+            }
+            File.WriteAllText("Twenty year windows.csv", output.ToString());
+            output.Clear();
+            for (int year = 1930; year < DateTime.Now.Year; year += 10)
+            {
+                EvaluateStrategies(output, history, year);
+            }
+            File.WriteAllText("Starting at year.csv", output.ToString());
         }
 
         private static List<StockData> ReadStockHistory(string csvPath)
@@ -69,19 +85,126 @@ namespace CrashAndBurn
             return history;
         }
 
-        private static void EvaluateStrategies(List<StockData> history, int? year = null)
+        private static void EvaluateStrategies(StringBuilder output, List<StockData> history, int? firstYear = null, int? lastYear = null)
         {
-            const decimal initialCash = 100000.0m;
-            const decimal orderFees = 10.0m;
-            const decimal capitalGainsTax = 0.25m;
-
             var referenceStrategy = new BuyAndHoldStrategy();
+            var strategies = GetStrategies(referenceStrategy);
+            if (output.Length == 0)
+            {
+                var tokens = new List<string>
+                {
+                    "Date"
+                };
+                foreach (var strategy in GetCustomStrategies(strategies, referenceStrategy))
+                {
+                    tokens.Add(strategy.Name);
+                }
+                AppendLine(tokens, output);
+            }
+            var adjustedHistory = history.Where(stockData => YearMatch(stockData, firstYear, lastYear)).ToList();
+            var strategyStats = new List<StrategyStats>();
+            RunStrategies(referenceStrategy, strategies, adjustedHistory, strategyStats, firstYear, output);
+            PrintStrategies(strategies, referenceStrategy, adjustedHistory);
+            // PrintStrategyStats(strategyStats, referenceStrategy);
+        }
+
+        private static IEnumerable<BaseStrategy> GetCustomStrategies(List<BaseStrategy> strategies, BaseStrategy referenceStrategy)
+        {
+            return strategies.Where(s => !ReferenceEquals(s, referenceStrategy));
+        }
+
+        private static void AppendLine(List<string> tokens, StringBuilder output)
+        {
+            string line = string.Join(";", tokens);
+            output.AppendLine(line);
+        }
+
+        private static bool YearMatch(StockData stockData, int? firstYear, int? lastYear)
+        {
+            return
+                (!firstYear.HasValue || stockData.Date.Year >= firstYear.Value) &&
+                (!lastYear.HasValue || stockData.Date.Year < lastYear.Value);
+        }
+
+        private static void RunStrategies(BuyAndHoldStrategy referenceStrategy, List<BaseStrategy> strategies, List<StockData> adjustedHistory, List<StrategyStats> strategyStats, int? firstYear, StringBuilder output)
+        {
+            foreach (var strategy in strategies)
+            {
+                strategy.Initialize(_InitialCash, _OrderFees, _CapitalGainsTax);
+                strategy.Buy(adjustedHistory.First());
+                foreach (var stockData in adjustedHistory.Skip(1))
+                {
+                    strategy.ProcessStockData(stockData);
+                }
+                strategy.Sell(adjustedHistory.Last(), false);
+                string strategyName = strategy.StrategyName;
+                if (!ReferenceEquals(strategy, referenceStrategy))
+                {
+                    var stats = strategyStats.FirstOrDefault(s => s.Name == strategyName);
+                    if (stats == null)
+                    {
+                        stats = new StrategyStats(strategyName);
+                        strategyStats.Add(stats);
+                    }
+                    stats.Add(strategy.Cash);
+                }
+            }
+            var tokens = new List<string>
+            {
+                firstYear.ToString()
+            };
+            foreach (var strategy in GetCustomStrategies(strategies, referenceStrategy))
+            {
+                decimal performance = GetPerformance(strategy.Cash, referenceStrategy.Cash);
+                tokens.Add(performance.ToString());
+            }
+            AppendLine(tokens, output);
+        }
+
+        private static void PrintStrategyStats(List<StrategyStats> strategyStats, BuyAndHoldStrategy referenceStrategy)
+        {
+            strategyStats.Sort((x, y) => y.Cash.CompareTo(x.Cash));
+            foreach (var stats in strategyStats)
+            {
+                Write($"  {stats.Name}: {stats.Cash:C2}");
+                WritePerformance(stats.Cash, referenceStrategy.Cash);
+            }
+            WriteLine(string.Empty);
+        }
+
+        private static void PrintStrategies(List<BaseStrategy> strategies, BuyAndHoldStrategy referenceStrategy, List<StockData> adjustedHistory)
+        {
+            strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
+            WriteLine($"Strategies sorted by returns, starting with {_InitialCash:C0} ({adjustedHistory.First().Date.Year} - {adjustedHistory.Last().Date.Year}):");
+            var bestStrategies = strategies.Take(10).ToList();
+            if (!bestStrategies.Contains(referenceStrategy))
+            {
+                bestStrategies.Remove(bestStrategies.Last());
+                bestStrategies.Add(referenceStrategy);
+            }
+            foreach (var strategy in bestStrategies)
+            {
+                if (ReferenceEquals(strategy, referenceStrategy))
+                {
+                    WriteLine($"  {strategy.Name}: {strategy.Cash:C2} (reference strategy)", ConsoleColor.White);
+                }
+                else
+                {
+                    Write($"  {strategy.Name}: {strategy.Cash:C2}");
+                    WritePerformance(strategy.Cash, referenceStrategy.Cash);
+                }
+            }
+            WriteLine(string.Empty);
+        }
+
+        private static List<BaseStrategy> GetStrategies(BuyAndHoldStrategy referenceStrategy)
+        {
             var strategies = new List<BaseStrategy>
             {
                 referenceStrategy
             };
-            var strategyStats = new List<StrategyStats>();
             Action<BaseStrategy> addStrategy = strategy => strategies.Add(strategy);
+            /*
             for (decimal stopLossPercentage = 0.04m; stopLossPercentage <= 0.14m; stopLossPercentage += 0.02m)
             {
                 const int daysPerWeek = 7;
@@ -100,71 +223,32 @@ namespace CrashAndBurn
                     addStrategy(new TrailingStopVolatilityStrategy(stopLossPercentage, volatilityPercentage));
                 }
             }
-            var adjustedHistory = history;
-            if (year.HasValue)
+            */
+
+            for (decimal stopLossPercentage = 0.08m; stopLossPercentage <= 0.12m; stopLossPercentage += 0.02m)
             {
-                adjustedHistory = history.Where(stockData => stockData.Date.Year >= year.Value).ToList();
-            }
-            foreach (var strategy in strategies)
-            {
-                strategy.Initialize(initialCash, orderFees, capitalGainsTax);
-                strategy.Buy(adjustedHistory.First());
-                foreach (var stockData in adjustedHistory.Skip(1))
+                const int daysPerWeek = 7;
+                for (int recoveryDays = 4 * daysPerWeek; recoveryDays <= 8 * daysPerWeek; recoveryDays *= 2)
                 {
-                    strategy.ProcessStockData(stockData);
-                }
-                strategy.Sell(adjustedHistory.Last(), false);
-                string strategyName = strategy.StrategyName;
-                if (!object.ReferenceEquals(strategy, referenceStrategy))
-                {
-                    var stats = strategyStats.FirstOrDefault(s => s.Name == strategyName);
-                    if (stats == null)
-                    {
-                        stats = new StrategyStats(strategyName);
-                        strategyStats.Add(stats);
-                    }
-                    stats.Add(strategy.Cash);
+                    addStrategy(new TrailingStopStrategy(stopLossPercentage, recoveryDays));
                 }
             }
 
-            strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
-            WriteLine($"Strategies sorted by returns, starting with {initialCash:C0} on {adjustedHistory.First().Date.ToShortDateString()}:");
-            var bestStrategies = strategies.Take(10).ToList();
-            if (!bestStrategies.Contains(referenceStrategy))
-            {
-                bestStrategies.Remove(bestStrategies.Last());
-                bestStrategies.Add(referenceStrategy);
-            }
-            foreach (var strategy in bestStrategies)
-            {
-                if (object.ReferenceEquals(strategy, referenceStrategy))
-                {
-                    WriteLine($"  {strategy.Name}: {strategy.Cash:C2} (reference strategy)", ConsoleColor.White);
-                }
-                else
-                {
-                    Write($"  {strategy.Name}: {strategy.Cash:C2}");
-                    WritePerformance(strategy.Cash, referenceStrategy.Cash);
-                }
-            }
-            WriteLine(string.Empty);
-
-            strategyStats.Sort((x, y) => y.Cash.CompareTo(x.Cash));
-            foreach (var stats in strategyStats)
-            {
-                Write($"  {stats.Name}: {stats.Cash:C2}");
-                WritePerformance(stats.Cash, referenceStrategy.Cash);
-            }
-            WriteLine(string.Empty);
+            return strategies;
         }
 
         private static void WritePerformance(decimal cash, decimal referenceCash)
         {
-            decimal performance = cash / referenceCash - 1.0m;
+            decimal performance = GetPerformance(cash, referenceCash);
             var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
             Write(" (");
             Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
             WriteLine(")");
+        }
+
+        private static decimal GetPerformance(decimal cash, decimal referenceCash)
+        {
+            return cash / referenceCash - 1.0m;
         }
 
         private static void WithColor(ConsoleColor? color, Action action)
