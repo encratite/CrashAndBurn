@@ -7,12 +7,17 @@ namespace CrashAndBurn.Strategy
         private decimal _TrailingStopPercentage;
         private int _RecoveryDays;
 
-        private decimal? _MaximumPrice;
-        private decimal? _TrailingStop;
-        private DateTime? _RecoveryDate;
+        protected decimal? MaximumPrice { get; set; }
+        protected decimal? TrailingStop { get; set; }
+        protected DateTime? RecoveryDate { get; set; }
 
         public TrailingStopStrategy(decimal trailingStopPercentage, int recoveryDays)
-            : base($"Trailing stop ({trailingStopPercentage:P1}, {recoveryDays} recovery days)")
+            : this($"Trailing stop ({trailingStopPercentage:P1}, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
+        {
+        }
+
+        public TrailingStopStrategy(string name, decimal trailingStopPercentage, int recoveryDays)
+            : base(name)
         {
             _TrailingStopPercentage = trailingStopPercentage;
             _RecoveryDays = recoveryDays;
@@ -22,39 +27,39 @@ namespace CrashAndBurn.Strategy
         {
             base.Buy(stockData);
             decimal price = stockData.Open;
-            _MaximumPrice = price;
+            MaximumPrice = price;
             SetTrailingStop(price);
-            _RecoveryDate = null;
+            RecoveryDate = null;
         }
 
         public override void Sell(StockData stockData, bool low)
         {
             base.Sell(stockData, low);
-            _MaximumPrice = null;
-            _TrailingStop = null;
-            _RecoveryDate = stockData.Date.AddDays(_RecoveryDays);
+            MaximumPrice = null;
+            TrailingStop = null;
+            RecoveryDate = stockData.Date.AddDays(_RecoveryDays);
         }
 
         public override void ProcessStockData(StockData stockData)
         {
-            if (_MaximumPrice.HasValue && stockData.High > _MaximumPrice)
+            if (MaximumPrice.HasValue && stockData.High > MaximumPrice)
             {
-                _MaximumPrice = stockData.High;
+                MaximumPrice = stockData.High;
                 SetTrailingStop(stockData.High);
             }
-            if (_TrailingStop.HasValue && stockData.Low <= _TrailingStop.Value)
+            if (TrailingStop.HasValue && stockData.Low <= TrailingStop.Value)
             {
                 Sell(stockData, true);
             }
-            else if (_RecoveryDate.HasValue && stockData.Date >= _RecoveryDate.Value)
+            else if (RecoveryDate.HasValue && stockData.Date >= RecoveryDate.Value)
             {
                 Buy(stockData);
             }
         }
 
-        private void SetTrailingStop(decimal price)
+        protected void SetTrailingStop(decimal price)
         {
-            _TrailingStop = (1.0m - _TrailingStopPercentage) * price;
+            TrailingStop = (1.0m - _TrailingStopPercentage) * price;
         }
     }
 }

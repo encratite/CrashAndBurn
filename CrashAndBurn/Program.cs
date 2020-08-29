@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace CrashAndBurn
@@ -21,10 +22,10 @@ namespace CrashAndBurn
             }
             string csvPath = arguments[0];
             var history = ReadStockHistory(csvPath);
-            RunTest(history);
+            EvaluateStrategies(history);
             for (int year = 1970; year < DateTime.Now.Year; year += 10)
             {
-                RunTest(history, year);
+                EvaluateStrategies(history, year);
             }
         }
 
@@ -63,13 +64,14 @@ namespace CrashAndBurn
             return history;
         }
 
-        private static void RunTest(List<StockData> history, int? year = null)
+        private static void EvaluateStrategies(List<StockData> history, int? year = null)
         {
             const decimal initialCash = 100000.0m;
             const decimal orderFees = 10.0m;
+            var refrenceStrategy = new BuyAndHoldStrategy();
             var strategies = new List<BaseStrategy>
             {
-                new BuyAndHoldStrategy()
+                refrenceStrategy
             };
             for (decimal trailingStopPercentage = 0.04m; trailingStopPercentage <= 0.14m; trailingStopPercentage += 0.02m)
             {
@@ -78,6 +80,8 @@ namespace CrashAndBurn
                 {
                     var strategy = new TrailingStopStrategy(trailingStopPercentage, recoveryDays);
                     strategies.Add(strategy);
+                    var mondayStrategy = new TrailingStopMondayStrategy(trailingStopPercentage, recoveryDays);
+                    strategies.Add(mondayStrategy);
                 }
             }
             var adjustedHistory = history;
@@ -97,7 +101,13 @@ namespace CrashAndBurn
             }
             strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
             Console.WriteLine($"Strategies sorted by returns, starting with {initialCash:C0} on {adjustedHistory.First().Date.ToShortDateString()}:");
-            foreach (var strategy in strategies.Take(10))
+            var bestStrategies = strategies.Take(10).ToList();
+            if (!bestStrategies.Contains(refrenceStrategy))
+            {
+                bestStrategies.Remove(bestStrategies.Last());
+                bestStrategies.Add(refrenceStrategy);
+            }
+            foreach (var strategy in bestStrategies)
             {
                 Console.WriteLine($"  {strategy.Name}: {strategy.Cash:C2}");
             }
