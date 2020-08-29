@@ -4,6 +4,8 @@ namespace CrashAndBurn.Strategy
 {
     abstract class BaseStrategy
     {
+        public abstract string StrategyName { get; }
+
         public string Name { get; private set; }
         public decimal Cash { get; private set; }
 

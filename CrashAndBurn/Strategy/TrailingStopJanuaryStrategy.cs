@@ -4,10 +4,14 @@ namespace CrashAndBurn.Strategy
 {
     class TrailingStopJanuaryStrategy : TrailingStopStrategy
     {
+        private const string _StrategyName = "Trailing stop, January anomaly";
+
+        public override string StrategyName => _StrategyName;
+
         private int _OffsetDays;
 
         public TrailingStopJanuaryStrategy(decimal trailingStopPercentage, int recoveryDays, int offsetDays)
-            : base($"Trailing stop, January anomaly ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days, {offsetDays} offset days)", trailingStopPercentage, recoveryDays)
+            : base($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days, {offsetDays} offset days)", trailingStopPercentage, recoveryDays)
         {
             _OffsetDays = offsetDays;
         }

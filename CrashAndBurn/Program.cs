@@ -18,7 +18,7 @@ namespace CrashAndBurn
             {
                 var assembly = Assembly.GetExecutingAssembly();
                 var name = assembly.GetName();
-                WriteLine($"{name.Name} <path to .csv file containing Yahoo! Finance dump>");
+                WriteLine($"{name.Name} <path to .csv file containing Yahoo Finance dump>");
                 return;
             }
             string csvPath = arguments[0];
@@ -80,18 +80,19 @@ namespace CrashAndBurn
             {
                 referenceStrategy
             };
+            var strategyStats = new List<StrategyStats>();
             Action<BaseStrategy> addStrategy = strategy => strategies.Add(strategy);
             for (decimal stopLossPercentage = 0.04m; stopLossPercentage <= 0.14m; stopLossPercentage += 0.02m)
             {
                 const int daysPerWeek = 7;
                 for (int recoveryDays = daysPerWeek; recoveryDays <= 32 * daysPerWeek; recoveryDays *= 2)
                 {
-                    // addStrategy(new StopLossStrategy(stopLossPercentage, recoveryDays));
+                    addStrategy(new StopLossStrategy(stopLossPercentage, recoveryDays));
                     addStrategy(new TrailingStopStrategy(stopLossPercentage, recoveryDays));
-                    // addStrategy(new TrailingStopMondayStrategy(stopLossPercentage, recoveryDays));
+                    addStrategy(new TrailingStopMondayStrategy(stopLossPercentage, recoveryDays));
                     for (int offsetDays = -10; offsetDays <= 20; offsetDays += 10)
                     {
-                        // addStrategy(new TrailingStopJanuaryStrategy(stopLossPercentage, recoveryDays, offsetDays));
+                        addStrategy(new TrailingStopJanuaryStrategy(stopLossPercentage, recoveryDays, offsetDays));
                     }
                 }
                 for (decimal volatilityPercentage = 0.02m; volatilityPercentage <= 0.1m; volatilityPercentage += 0.02m)
@@ -113,7 +114,19 @@ namespace CrashAndBurn
                     strategy.ProcessStockData(stockData);
                 }
                 strategy.Sell(adjustedHistory.Last(), false);
+                string strategyName = strategy.StrategyName;
+                if (!object.ReferenceEquals(strategy, referenceStrategy))
+                {
+                    var stats = strategyStats.FirstOrDefault(s => s.Name == strategyName);
+                    if (stats == null)
+                    {
+                        stats = new StrategyStats(strategyName);
+                        strategyStats.Add(stats);
+                    }
+                    stats.Add(strategy.Cash);
+                }
             }
+
             strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
             WriteLine($"Strategies sorted by returns, starting with {initialCash:C0} on {adjustedHistory.First().Date.ToShortDateString()}:");
             var bestStrategies = strategies.Take(10).ToList();
@@ -124,20 +137,34 @@ namespace CrashAndBurn
             }
             foreach (var strategy in bestStrategies)
             {
-                decimal performance = strategy.Cash / referenceStrategy.Cash - 1.0m;
                 if (object.ReferenceEquals(strategy, referenceStrategy))
                 {
                     WriteLine($"  {strategy.Name}: {strategy.Cash:C2} (reference strategy)", ConsoleColor.White);
                 }
                 else
                 {
-                    Write($"  {strategy.Name}: {strategy.Cash:C2} (");
-                    var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
-                    Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
-                    WriteLine(")");
+                    Write($"  {strategy.Name}: {strategy.Cash:C2}");
+                    WritePerformance(strategy.Cash, referenceStrategy.Cash);
                 }
             }
             WriteLine(string.Empty);
+
+            strategyStats.Sort((x, y) => y.Cash.CompareTo(x.Cash));
+            foreach (var stats in strategyStats)
+            {
+                Write($"  {stats.Name}: {stats.Cash:C2}");
+                WritePerformance(stats.Cash, referenceStrategy.Cash);
+            }
+            WriteLine(string.Empty);
+        }
+
+        private static void WritePerformance(decimal cash, decimal referenceCash)
+        {
+            decimal performance = cash / referenceCash - 1.0m;
+            var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
+            Write(" (");
+            Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
+            WriteLine(")");
         }
 
         private static void WithColor(ConsoleColor? color, Action action)

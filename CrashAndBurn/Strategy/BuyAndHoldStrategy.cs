@@ -2,8 +2,12 @@
 {
     class BuyAndHoldStrategy : BaseStrategy
     {
+        private const string _StrategyName = "Buy and hold";
+
+        public override string StrategyName => _StrategyName;
+
         public BuyAndHoldStrategy()
-            : base("Buy and hold")
+            : base(_StrategyName)
         {
         }
 

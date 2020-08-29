@@ -4,6 +4,10 @@ namespace CrashAndBurn.Strategy
 {
     class TrailingStopStrategy : BaseStrategy
     {
+        private const string _StrategyName = "Trailing stop";
+
+        public override string StrategyName => _StrategyName;
+
         private decimal _TrailingStopPercentage;
         private int _RecoveryDays;
 
@@ -12,7 +16,7 @@ namespace CrashAndBurn.Strategy
         protected DateTime? RecoveryDate { get; set; }
 
         public TrailingStopStrategy(decimal trailingStopPercentage, int recoveryDays)
-            : this($"Trailing stop ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
+            : this($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
         {
         }
 

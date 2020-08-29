@@ -4,6 +4,10 @@ namespace CrashAndBurn.Strategy
 {
     class StopLossStrategy : BaseStrategy
     {
+        private const string _StrategyName = "Stop-loss";
+
+        public override string StrategyName => _StrategyName;
+
         private decimal _StopLossPercentage;
         private int _RecoveryDays;
 
@@ -11,7 +15,7 @@ namespace CrashAndBurn.Strategy
         private DateTime? _RecoveryDate;
 
         public StopLossStrategy(decimal stopLossPercentage, int recoveryDays)
-            : base($"Stop-loss ({stopLossPercentage:P1} pullback, {recoveryDays} recovery days)")
+            : base($"{_StrategyName} ({stopLossPercentage:P1} pullback, {recoveryDays} recovery days)")
         {
             _StopLossPercentage = stopLossPercentage;
             _RecoveryDays = recoveryDays;

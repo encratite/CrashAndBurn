@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Security;
 
 namespace CrashAndBurn.Strategy
 {
     class TrailingStopVolatilityStrategy : BaseStrategy
     {
+        private const string _StrategyName = "Trailing stop, volatility window";
+
+        public override string StrategyName => _StrategyName;
+
         private decimal _TrailingStopPercentage;
         private decimal _VolatilityPercentage;
         private decimal? _MaximumPrice;
@@ -16,7 +19,7 @@ namespace CrashAndBurn.Strategy
         private List<StockData> _StockDataBuffer = new List<StockData>();
 
         public TrailingStopVolatilityStrategy(decimal trailingStopPercentage, decimal volatilityPercentage)
-            : base($"Trailing stop, volatility window ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} volatility)")
+            : base($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} volatility)")
         {
             _TrailingStopPercentage = trailingStopPercentage;
             _VolatilityPercentage = volatilityPercentage;
