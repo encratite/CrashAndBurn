@@ -37,13 +37,13 @@ namespace CrashAndBurn
             }
             */
             var output = new StringBuilder();
-            for (int year = 1930; year < DateTime.Now.Year; year += 5)
+            for (int year = 1930; year < DateTime.Now.Year; year++)
             {
                 EvaluateStrategies(output, history, year, year + 20);
             }
             File.WriteAllText("Twenty year windows.csv", output.ToString());
             output.Clear();
-            for (int year = 1930; year < DateTime.Now.Year; year += 10)
+            for (int year = 1930; year < DateTime.Now.Year; year++)
             {
                 EvaluateStrategies(output, history, year);
             }
