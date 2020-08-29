@@ -69,6 +69,8 @@ namespace CrashAndBurn
         {
             const decimal initialCash = 100000.0m;
             const decimal orderFees = 10.0m;
+            const decimal capitalGainsTax = 0.25m;
+
             var referenceStrategy = new BuyAndHoldStrategy();
             var strategies = new List<BaseStrategy>
             {
@@ -85,6 +87,11 @@ namespace CrashAndBurn
                     strategies.Add(strategy);
                     var mondayStrategy = new TrailingStopMondayStrategy(stopLossPercentage, recoveryDays);
                     strategies.Add(mondayStrategy);
+                    for (int offsetDays = -10; offsetDays <= 20; offsetDays += 10)
+                    {
+                        var januaryStrategy = new TrailingStopJanuaryStrategy(stopLossPercentage, recoveryDays, offsetDays);
+                        strategies.Add(januaryStrategy);
+                    }
                 }
             }
             var adjustedHistory = history;
@@ -94,7 +101,7 @@ namespace CrashAndBurn
             }
             foreach (var strategy in strategies)
             {
-                strategy.Initialize(initialCash, orderFees);
+                strategy.Initialize(initialCash, orderFees, capitalGainsTax);
                 strategy.Buy(adjustedHistory.First());
                 foreach (var stockData in adjustedHistory.Skip(1))
                 {
