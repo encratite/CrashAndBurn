@@ -94,7 +94,7 @@ namespace CrashAndBurn
                         // addStrategy(new TrailingStopJanuaryStrategy(stopLossPercentage, recoveryDays, offsetDays));
                     }
                 }
-                for (decimal volatilityPercentage = 0.05m; volatilityPercentage <= 0.15m; volatilityPercentage += 0.05m)
+                for (decimal volatilityPercentage = 0.02m; volatilityPercentage <= 0.1m; volatilityPercentage += 0.02m)
                 {
                     addStrategy(new TrailingStopVolatilityStrategy(stopLossPercentage, volatilityPercentage));
                 }

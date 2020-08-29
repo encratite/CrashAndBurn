@@ -16,7 +16,7 @@ namespace CrashAndBurn.Strategy
         private List<StockData> _StockDataBuffer = new List<StockData>();
 
         public TrailingStopVolatilityStrategy(decimal trailingStopPercentage, decimal volatilityPercentage)
-            : base($"Trailing stop, volatility signal ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} volatility)")
+            : base($"Trailing stop, volatility window ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} volatility)")
         {
             _TrailingStopPercentage = trailingStopPercentage;
             _VolatilityPercentage = volatilityPercentage;
