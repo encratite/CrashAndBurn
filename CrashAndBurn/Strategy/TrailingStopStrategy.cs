@@ -12,7 +12,7 @@ namespace CrashAndBurn.Strategy
         protected DateTime? RecoveryDate { get; set; }
 
         public TrailingStopStrategy(decimal trailingStopPercentage, int recoveryDays)
-            : this($"Trailing stop ({trailingStopPercentage:P1}, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
+            : this($"Trailing stop ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
         {
         }
 

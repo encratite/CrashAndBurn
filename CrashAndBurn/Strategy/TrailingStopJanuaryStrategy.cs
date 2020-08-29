@@ -7,7 +7,7 @@ namespace CrashAndBurn.Strategy
         private int _OffsetDays;
 
         public TrailingStopJanuaryStrategy(decimal trailingStopPercentage, int recoveryDays, int offsetDays)
-            : base($"Trailing stop, January anomaly ({trailingStopPercentage:P1}, {recoveryDays} recovery days, {offsetDays} offset days)", trailingStopPercentage, recoveryDays)
+            : base($"Trailing stop, January anomaly ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days, {offsetDays} offset days)", trailingStopPercentage, recoveryDays)
         {
             _OffsetDays = offsetDays;
         }

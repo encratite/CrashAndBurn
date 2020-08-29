@@ -1,5 +1,4 @@
-*.suo
-*.user
+*.vs
 launchSettings.json
 bin
 obj

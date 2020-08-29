@@ -24,7 +24,11 @@ namespace CrashAndBurn
             string csvPath = arguments[0];
             var history = ReadStockHistory(csvPath);
             EvaluateStrategies(history);
-            for (int year = 1970; year < DateTime.Now.Year; year += 10)
+            for (int year = 1970; year < 2000; year += 10)
+            {
+                EvaluateStrategies(history, year);
+            }
+            for (int year = 2000; year < DateTime.Now.Year; year += 5)
             {
                 EvaluateStrategies(history, year);
             }
@@ -33,7 +37,7 @@ namespace CrashAndBurn
         private static List<StockData> ReadStockHistory(string csvPath)
         {
             var lines = File.ReadAllLines(csvPath);
-            var pattern = new Regex(@"^(?<year>\d+)-(?<month>\d+)-(?<day>\d+),(?<open>\d+\.\d+),(?<close>\d+\.\d+),(?<high>\d+\.\d+),(?<low>\d+\.\d+),(?<adjustedClose>\d+\.\d+),(?<volume>\d+)");
+            var pattern = new Regex(@"^(?<year>\d+)-(?<month>\d+)-(?<day>\d+),(?<open>\d+\.\d+),(?<high>\d+\.\d+),(?<low>\d+\.\d+),(?<close>\d+\.\d+),(?<adjustedClose>\d+\.\d+),(?<volume>\d+)");
             var history = new List<StockData>();
             foreach (string line in lines)
             {
@@ -48,9 +52,9 @@ namespace CrashAndBurn
                     int month = parseInt("month");
                     int day = parseInt("day");
                     decimal open = parseDecimal("open");
-                    decimal close = parseDecimal("close");
                     decimal high = parseDecimal("high");
                     decimal low = parseDecimal("low");
+                    decimal close = parseDecimal("close");
                     decimal adjustedClose = parseDecimal("adjustedClose");
                     long volume = parseLong("volume");
                     var date = new DateTime(year, month, day);
@@ -76,22 +80,23 @@ namespace CrashAndBurn
             {
                 referenceStrategy
             };
+            Action<BaseStrategy> addStrategy = strategy => strategies.Add(strategy);
             for (decimal stopLossPercentage = 0.04m; stopLossPercentage <= 0.14m; stopLossPercentage += 0.02m)
             {
                 const int daysPerWeek = 7;
                 for (int recoveryDays = daysPerWeek; recoveryDays <= 32 * daysPerWeek; recoveryDays *= 2)
                 {
-                    var stopLossStrategy = new StopLossStrategy(stopLossPercentage, recoveryDays);
-                    strategies.Add(stopLossStrategy);
-                    var strategy = new TrailingStopStrategy(stopLossPercentage, recoveryDays);
-                    strategies.Add(strategy);
-                    var mondayStrategy = new TrailingStopMondayStrategy(stopLossPercentage, recoveryDays);
-                    strategies.Add(mondayStrategy);
+                    // addStrategy(new StopLossStrategy(stopLossPercentage, recoveryDays));
+                    addStrategy(new TrailingStopStrategy(stopLossPercentage, recoveryDays));
+                    // addStrategy(new TrailingStopMondayStrategy(stopLossPercentage, recoveryDays));
                     for (int offsetDays = -10; offsetDays <= 20; offsetDays += 10)
                     {
-                        var januaryStrategy = new TrailingStopJanuaryStrategy(stopLossPercentage, recoveryDays, offsetDays);
-                        strategies.Add(januaryStrategy);
+                        // addStrategy(new TrailingStopJanuaryStrategy(stopLossPercentage, recoveryDays, offsetDays));
                     }
+                }
+                for (decimal volatilityPercentage = 0.05m; volatilityPercentage <= 0.15m; volatilityPercentage += 0.05m)
+                {
+                    addStrategy(new TrailingStopVolatilityStrategy(stopLossPercentage, volatilityPercentage));
                 }
             }
             var adjustedHistory = history;

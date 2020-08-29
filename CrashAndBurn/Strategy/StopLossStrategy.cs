@@ -11,7 +11,7 @@ namespace CrashAndBurn.Strategy
         private DateTime? _RecoveryDate;
 
         public StopLossStrategy(decimal stopLossPercentage, int recoveryDays)
-            : base($"Stop-loss ({stopLossPercentage:P1}, {recoveryDays} recovery days)")
+            : base($"Stop-loss ({stopLossPercentage:P1} pullback, {recoveryDays} recovery days)")
         {
             _StopLossPercentage = stopLossPercentage;
             _RecoveryDays = recoveryDays;
