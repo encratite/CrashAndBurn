@@ -21,35 +21,10 @@ namespace CrashAndBurn
             }
             string csvPath = arguments[0];
             var history = ReadStockHistory(csvPath);
-            const decimal initialCash = 100000.0m;
-            const decimal orderFees = 10.0m;
-            var strategies = new List<BaseStrategy>
+            RunTest(history);
+            for (int year = 1970; year < DateTime.Now.Year; year += 10)
             {
-                new BuyAndHoldStrategy()
-            };
-            for (decimal trailingStopPercentage = 0.04m; trailingStopPercentage <= 0.14m; trailingStopPercentage += 0.02m)
-            {
-                const int daysPerWeek = 7;
-                for (int recoveryDays = 2 * daysPerWeek; recoveryDays <= 12 * daysPerWeek; recoveryDays += 2 * daysPerWeek)
-                {
-                    var strategy = new TrailingStopStrategy(trailingStopPercentage, recoveryDays);
-                    strategies.Add(strategy);
-                }
-            }
-            foreach (var strategy in strategies)
-            {
-                strategy.Initialize(initialCash, orderFees);
-                strategy.Buy(history.First());
-                foreach (var stockData in history.Skip(1))
-                {
-                    strategy.ProcessStockData(stockData);
-                }
-                strategy.Sell(history.Last(), false);
-            }
-            strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
-            foreach (var strategy in strategies)
-            {
-                Console.WriteLine($"{strategy.Name}: {strategy.Cash:C2}");
+                RunTest(history, year);
             }
         }
 
@@ -86,6 +61,46 @@ namespace CrashAndBurn
                 throw new ApplicationException("Failed to parse stock data from .csv file.");
             }
             return history;
+        }
+
+        private static void RunTest(List<StockData> history, int? year = null)
+        {
+            const decimal initialCash = 100000.0m;
+            const decimal orderFees = 10.0m;
+            var strategies = new List<BaseStrategy>
+            {
+                new BuyAndHoldStrategy()
+            };
+            for (decimal trailingStopPercentage = 0.04m; trailingStopPercentage <= 0.14m; trailingStopPercentage += 0.02m)
+            {
+                const int daysPerWeek = 7;
+                for (int recoveryDays = 2 * daysPerWeek; recoveryDays <= 12 * daysPerWeek; recoveryDays += 2 * daysPerWeek)
+                {
+                    var strategy = new TrailingStopStrategy(trailingStopPercentage, recoveryDays);
+                    strategies.Add(strategy);
+                }
+            }
+            var adjustedHistory = history;
+            if (year.HasValue)
+            {
+                adjustedHistory = history.Where(stockData => stockData.Date.Year >= year.Value).ToList();
+            }
+            foreach (var strategy in strategies)
+            {
+                strategy.Initialize(initialCash, orderFees);
+                strategy.Buy(adjustedHistory.First());
+                foreach (var stockData in adjustedHistory.Skip(1))
+                {
+                    strategy.ProcessStockData(stockData);
+                }
+                strategy.Sell(adjustedHistory.Last(), false);
+            }
+            strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
+            Console.WriteLine($"Strategies sorted by returns, starting with {initialCash:C0} on {adjustedHistory.First().Date.ToShortDateString()}:");
+            foreach (var strategy in strategies.Take(10))
+            {
+                Console.WriteLine($"  {strategy.Name}: {strategy.Cash:C2}");
+            }
         }
     }
 }
