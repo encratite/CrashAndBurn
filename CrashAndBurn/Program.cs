@@ -74,14 +74,16 @@ namespace CrashAndBurn
             {
                 referenceStrategy
             };
-            for (decimal trailingStopPercentage = 0.04m; trailingStopPercentage <= 0.14m; trailingStopPercentage += 0.02m)
+            for (decimal stopLossPercentage = 0.04m; stopLossPercentage <= 0.14m; stopLossPercentage += 0.02m)
             {
                 const int daysPerWeek = 7;
                 for (int recoveryDays = daysPerWeek; recoveryDays <= 32 * daysPerWeek; recoveryDays *= 2)
                 {
-                    var strategy = new TrailingStopStrategy(trailingStopPercentage, recoveryDays);
+                    var stopLossStrategy = new StopLossStrategy(stopLossPercentage, recoveryDays);
+                    strategies.Add(stopLossStrategy);
+                    var strategy = new TrailingStopStrategy(stopLossPercentage, recoveryDays);
                     strategies.Add(strategy);
-                    var mondayStrategy = new TrailingStopMondayStrategy(trailingStopPercentage, recoveryDays);
+                    var mondayStrategy = new TrailingStopMondayStrategy(stopLossPercentage, recoveryDays);
                     strategies.Add(mondayStrategy);
                 }
             }
