@@ -9,7 +9,7 @@ namespace CrashAndBurn.Strategy
         public override string StrategyName => _StrategyName;
 
         private decimal _TrailingStopPercentage;
-        private int _RecoveryDays;
+        private int? _RecoveryDays;
 
         protected decimal? MaximumPrice { get; set; }
         protected decimal? TrailingStop { get; set; }
@@ -20,7 +20,7 @@ namespace CrashAndBurn.Strategy
         {
         }
 
-        public TrailingStopStrategy(string name, decimal trailingStopPercentage, int recoveryDays)
+        public TrailingStopStrategy(string name, decimal trailingStopPercentage, int? recoveryDays)
             : base(name)
         {
             _TrailingStopPercentage = trailingStopPercentage;
@@ -41,7 +41,10 @@ namespace CrashAndBurn.Strategy
             base.Sell(stockData, low);
             MaximumPrice = null;
             TrailingStop = null;
-            RecoveryDate = stockData.Date.AddDays(_RecoveryDays);
+            if (_RecoveryDays.HasValue)
+            {
+                RecoveryDate = stockData.Date.AddDays(_RecoveryDays.Value);
+            }
         }
 
         public override void ProcessStockData(StockData stockData)
