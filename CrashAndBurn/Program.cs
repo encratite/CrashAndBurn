@@ -1,10 +1,10 @@
-﻿using CrashAndBurn.Strategy;
+﻿using CrashAndBurn.Common;
+using CrashAndBurn.Strategy;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace CrashAndBurn
@@ -13,7 +13,7 @@ namespace CrashAndBurn
     {
         private const decimal _InitialCash = 100000.0m;
         private const decimal _OrderFees = 10.0m;
-        private const decimal _CapitalGainsTax = 0.25m;
+        private const decimal _CapitalGainsTax = 0.25m * 1.0505m;
 
         static void Main(string[] arguments)
         {
@@ -21,7 +21,7 @@ namespace CrashAndBurn
             {
                 var assembly = Assembly.GetExecutingAssembly();
                 var name = assembly.GetName();
-                WriteLine($"{name.Name} <path to .csv file containing Yahoo Finance dump>");
+                Output.WriteLine($"{name.Name} <path to .csv file containing Yahoo Finance dump>");
                 return;
             }
             string csvPath = arguments[0];
@@ -32,7 +32,7 @@ namespace CrashAndBurn
             {
                 EvaluateStrategies(history, year, year + windowSize);
             }
-            for (int year = firstYear; year <= DateTime.Now.Year - 10; year++)
+            for (int year = firstYear; year <= DateTime.Now.Year - 5; year++)
             {
                 EvaluateStrategies(history, year);
             }
@@ -130,16 +130,16 @@ namespace CrashAndBurn
             strategyStats.Sort((x, y) => y.Cash.CompareTo(x.Cash));
             foreach (var stats in strategyStats)
             {
-                Write($"  {stats.Name}: {stats.Cash:C2}");
+                Output.Write($"  {stats.Name}: {stats.Cash:C2}");
                 WritePerformance(stats.Cash, referenceStrategy.Cash);
             }
-            WriteLine(string.Empty);
+            Output.WriteLine(string.Empty);
         }
 
         private static void PrintStrategies(List<BaseStrategy> strategies, BuyAndHoldStrategy referenceStrategy, List<StockData> adjustedHistory)
         {
             strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
-            WriteLine($"Strategies sorted by returns, starting with {_InitialCash:C0} ({adjustedHistory.First().Date.Year} - {adjustedHistory.Last().Date.Year}):");
+            Output.WriteLine($"Strategies sorted by returns, starting with {_InitialCash:C0} ({adjustedHistory.First().Date.Year} - {adjustedHistory.Last().Date.Year}):");
             var bestStrategies = strategies.Take(10).ToList();
             if (!bestStrategies.Contains(referenceStrategy))
             {
@@ -150,15 +150,15 @@ namespace CrashAndBurn
             {
                 if (ReferenceEquals(strategy, referenceStrategy))
                 {
-                    WriteLine($"  {strategy.Name}: {strategy.Cash:C2} (reference strategy)", ConsoleColor.White);
+                    Output.WriteLine($"  {strategy.Name}: {strategy.Cash:C2} (reference strategy)", ConsoleColor.White);
                 }
                 else
                 {
-                    Write($"  {strategy.Name}: {strategy.Cash:C2}");
+                    Output.Write($"  {strategy.Name}: {strategy.Cash:C2}");
                     WritePerformance(strategy.Cash, referenceStrategy.Cash);
                 }
             }
-            WriteLine(string.Empty);
+            Output.WriteLine(string.Empty);
         }
 
         private static List<BaseStrategy> GetStrategies(BuyAndHoldStrategy referenceStrategy)
@@ -193,51 +193,14 @@ namespace CrashAndBurn
         {
             decimal performance = GetPerformance(cash, referenceCash);
             var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
-            Write(" (");
-            Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
-            WriteLine(")");
+            Output.Write(" (");
+            Output.Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
+            Output.WriteLine(")");
         }
 
         private static decimal GetPerformance(decimal cash, decimal referenceCash)
         {
             return cash / referenceCash - 1.0m;
-        }
-
-        private static void WithColor(ConsoleColor? color, Action action)
-        {
-            if (color.HasValue)
-            {
-                var originalForegroundColor = Console.ForegroundColor;
-                Console.ForegroundColor = color.Value;
-                try
-                {
-                    action();
-                }
-                finally
-                {
-                    Console.ForegroundColor = originalForegroundColor;
-                }
-            }
-            else
-            {
-                action();
-            }
-        }
-
-        private static void WriteLine(string text, ConsoleColor? color = null)
-        {
-            WithColor(color, () =>
-            {
-                Console.WriteLine(text);
-            });
-        }
-
-        private static void Write(string text, ConsoleColor? color = null)
-        {
-            WithColor(color, () =>
-            {
-                Console.Write(text);
-            });
         }
     }
 }
