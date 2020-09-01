@@ -1,4 +1,5 @@
 *.vs
+*.csv
 launchSettings.json
 bin
 obj

@@ -6,8 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.24" />
-    <PackageReference Include="ScrapySharp" Version="3.0.0" />
+    <PackageReference Include="AngleSharp" Version="1.0.0-alpha-827" />
   </ItemGroup>
 
   <ItemGroup>
