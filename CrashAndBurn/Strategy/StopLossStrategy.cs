@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CrashAndBurn.Common;
+using System;
 
 namespace CrashAndBurn.Strategy
 {

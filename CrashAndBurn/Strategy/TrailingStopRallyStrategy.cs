@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using CrashAndBurn.Common;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace CrashAndBurn.Strategy

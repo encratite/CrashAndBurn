@@ -1,4 +1,6 @@
-﻿namespace CrashAndBurn.Strategy
+﻿using CrashAndBurn.Common;
+
+namespace CrashAndBurn.Strategy
 {
     class BuyAndHoldStrategy : BaseStrategy
     {

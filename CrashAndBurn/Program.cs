@@ -2,19 +2,13 @@
 using CrashAndBurn.Strategy;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 
 namespace CrashAndBurn
 {
     class Program
     {
-        private const decimal _InitialCash = 100000.0m;
-        private const decimal _OrderFees = 10.0m;
-        private const decimal _CapitalGainsTax = 0.25m * 1.0505m;
-
         static void Main(string[] arguments)
         {
             if (arguments.Length != 1)
@@ -25,7 +19,7 @@ namespace CrashAndBurn
                 return;
             }
             string csvPath = arguments[0];
-            var history = ReadStockHistory(csvPath);
+            var history = StockData.FromFile(csvPath);
             int firstYear = history.First().Date.Year;
             const int windowSize = 20;
             for (int year = firstYear; year <= DateTime.Now.Year - windowSize; year++)
@@ -38,41 +32,6 @@ namespace CrashAndBurn
             }
         }
 
-        private static List<StockData> ReadStockHistory(string csvPath)
-        {
-            var lines = File.ReadAllLines(csvPath);
-            var pattern = new Regex(@"^(?<year>\d+)-(?<month>\d+)-(?<day>\d+),(?<open>\d+\.\d+),(?<high>\d+\.\d+),(?<low>\d+\.\d+),(?<close>\d+\.\d+),(?<adjustedClose>\d+\.\d+),(?<volume>\d+)");
-            var history = new List<StockData>();
-            foreach (string line in lines)
-            {
-                var match = pattern.Match(line);
-                if (match.Success)
-                {
-                    var groups = match.Groups;
-                    Func<string, int> parseInt = (string name) => int.Parse(groups[name].Value);
-                    Func<string, long> parseLong = (string name) => long.Parse(groups[name].Value);
-                    Func<string, decimal> parseDecimal = (string name) => decimal.Parse(groups[name].Value);
-                    int year = parseInt("year");
-                    int month = parseInt("month");
-                    int day = parseInt("day");
-                    decimal open = parseDecimal("open");
-                    decimal high = parseDecimal("high");
-                    decimal low = parseDecimal("low");
-                    decimal close = parseDecimal("close");
-                    decimal adjustedClose = parseDecimal("adjustedClose");
-                    long volume = parseLong("volume");
-                    var date = new DateTime(year, month, day);
-                    var stockData = new StockData(date, open, high, low, close, adjustedClose, volume);
-                    history.Add(stockData);
-                }
-            }
-            if (!history.Any())
-            {
-                throw new ApplicationException("Failed to parse stock data from .csv file.");
-            }
-            return history;
-        }
-
         private static void EvaluateStrategies(List<StockData> history, int? firstYear = null, int? lastYear = null)
         {
             var referenceStrategy = new BuyAndHoldStrategy();
@@ -83,7 +42,7 @@ namespace CrashAndBurn
                 return;
             }
             var strategyStats = new List<StrategyStats>();
-            RunStrategies(referenceStrategy, strategies, adjustedHistory, strategyStats, firstYear);
+            RunStrategies(referenceStrategy, strategies, adjustedHistory, strategyStats);
             PrintStrategies(strategies, referenceStrategy, adjustedHistory);
             PrintStrategyStats(strategyStats, referenceStrategy);
         }
@@ -100,11 +59,11 @@ namespace CrashAndBurn
                 (!lastYear.HasValue || stockData.Date.Year < lastYear.Value);
         }
 
-        private static void RunStrategies(BuyAndHoldStrategy referenceStrategy, List<BaseStrategy> strategies, List<StockData> adjustedHistory, List<StrategyStats> strategyStats, int? firstYear)
+        private static void RunStrategies(BuyAndHoldStrategy referenceStrategy, List<BaseStrategy> strategies, List<StockData> adjustedHistory, List<StrategyStats> strategyStats)
         {
             foreach (var strategy in strategies)
             {
-                strategy.Initialize(_InitialCash, _OrderFees, _CapitalGainsTax);
+                strategy.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax);
                 strategy.Buy(adjustedHistory.First());
                 foreach (var stockData in adjustedHistory.Skip(1))
                 {
@@ -139,7 +98,7 @@ namespace CrashAndBurn
         private static void PrintStrategies(List<BaseStrategy> strategies, BuyAndHoldStrategy referenceStrategy, List<StockData> adjustedHistory)
         {
             strategies.Sort((x, y) => y.Cash.CompareTo(x.Cash));
-            Output.WriteLine($"Strategies sorted by returns, starting with {_InitialCash:C0} ({adjustedHistory.First().Date.Year} - {adjustedHistory.Last().Date.Year}):");
+            Output.WriteLine($"Strategies sorted by returns, starting with {Constants.InitialCash:C0} ({adjustedHistory.First().Date.Year} - {adjustedHistory.Last().Date.Year}):");
             var bestStrategies = strategies.Take(10).ToList();
             if (!bestStrategies.Contains(referenceStrategy))
             {
