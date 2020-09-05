@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CrashAndBurn.Common
 {
@@ -28,6 +30,20 @@ namespace CrashAndBurn.Common
         public override int GetHashCode()
         {
             return Id.GetHashCode();
+        }
+
+        public decimal GetPrice(DateTime time)
+        {
+            var latestStockData = History.First();
+            foreach (var stockData in History)
+            {
+                if (stockData.Date > time)
+                {
+                    break;
+                }
+                latestStockData = stockData;
+            }
+            return latestStockData.Open;
         }
     }
 }
