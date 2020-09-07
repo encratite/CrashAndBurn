@@ -14,6 +14,9 @@ namespace CrashAndBurn.Common
         private decimal _Margin;
         private decimal _Spread = 0.01m;
 
+        private decimal _Gains = 0.0m;
+        private decimal _Losses = 0.0m;
+
         public IReadOnlyCollection<Stock> Stocks
         {
             get => _Stocks;
@@ -24,7 +27,7 @@ namespace CrashAndBurn.Common
             get => _Positions;
         }
 
-        public DateTime Time { get; private set; }
+        public DateTime Date { get; private set; }
 
         public StockMarket(IEnumerable<Stock> stocks)
         {
@@ -34,20 +37,28 @@ namespace CrashAndBurn.Common
             }
         }
 
-        public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal margin, DateTime time)
+        public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal margin, DateTime date)
         {
             _Cash = cash;
             _OrderFees = orderFees;
             _CapitalGainsTax = capitalGainsTax;
             _Margin = margin;
-            Time = time;
+            Date = date;
         }
 
         public void NextDay()
         {
-            while (Time.DayOfWeek == DayOfWeek.Saturday || Time.DayOfWeek == DayOfWeek.Sunday)
+            int lastMonth = Date.Month;
+            while (Date.DayOfWeek == DayOfWeek.Saturday || Date.DayOfWeek == DayOfWeek.Sunday)
             {
-                Time = Time.AddDays(1);
+                Date = Date.AddDays(1);
+            }
+            if (Date.Month != lastMonth)
+            {
+                decimal taxReturn = _CapitalGainsTax * Math.Min(_Gains, _Losses);
+                _Cash += taxReturn;
+                _Gains = 0;
+                _Losses = 0;
             }
         }
 
@@ -79,12 +90,39 @@ namespace CrashAndBurn.Common
 
         public void Sell(Position position)
         {
-            throw new NotImplementedException();
+            decimal currentPrice = position.Stock.GetPrice(Date);
+            decimal priceDelta = currentPrice - position.OriginalPrice;
+            decimal capitalGains = position.Count * priceDelta;
+            if (position.IsShort)
+            {
+                capitalGains = -capitalGains;
+                _Cash += capitalGains;
+                BookCapitalGains(capitalGains);
+            }
+            else
+            {
+                _Cash += position.Count * currentPrice;
+                BookCapitalGains(capitalGains);
+            }
+            _Positions.Remove(position);
+        }
+
+        private void BookCapitalGains(decimal capitalGains)
+        {
+            if (capitalGains > 0)
+            {
+                _Cash -= _CapitalGainsTax * capitalGains;
+                _Gains += capitalGains;
+            }
+            else
+            {
+                _Losses -= capitalGains;
+            }
         }
 
         private decimal GetPricePerStock(Stock stock)
         {
-            decimal pricePerStock = stock.GetPrice(Time) + _Spread;
+            decimal pricePerStock = stock.GetPrice(Date) + _Spread;
             return pricePerStock;
         }
     }

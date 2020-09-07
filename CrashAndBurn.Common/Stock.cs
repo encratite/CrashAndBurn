@@ -32,12 +32,12 @@ namespace CrashAndBurn.Common
             return Id.GetHashCode();
         }
 
-        public decimal GetPrice(DateTime time)
+        public decimal GetPrice(DateTime date)
         {
             var latestStockData = History.First();
             foreach (var stockData in History)
             {
-                if (stockData.Date > time)
+                if (stockData.Date > date)
                 {
                     break;
                 }
