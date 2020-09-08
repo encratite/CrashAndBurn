@@ -11,11 +11,13 @@ namespace CrashAndBurn.Common
         private decimal _Cash;
         private decimal _OrderFees;
         private decimal _CapitalGainsTax;
-        private decimal _Margin;
+        private decimal _InitialMargin;
+        private decimal _MaintenanceMargin;
+
         private decimal _Spread = 0.01m;
 
-        private decimal _Gains = 0.0m;
-        private decimal _Losses = 0.0m;
+        private decimal _Gains = 0;
+        private decimal _Losses = 0;
 
         public IReadOnlyCollection<Stock> Stocks
         {
@@ -37,12 +39,14 @@ namespace CrashAndBurn.Common
             }
         }
 
-        public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal margin, DateTime date)
+        public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, DateTime date)
         {
             _Cash = cash;
             _OrderFees = orderFees;
             _CapitalGainsTax = capitalGainsTax;
-            _Margin = margin;
+            _InitialMargin = initialMargin;
+            _MaintenanceMargin = maintenanceMargin;
+
             Date = date;
         }
 
@@ -55,10 +59,11 @@ namespace CrashAndBurn.Common
             }
             if (Date.Month != lastMonth)
             {
-                decimal taxReturn = _CapitalGainsTax * Math.Min(_Gains, _Losses);
+                decimal minimum = Math.Min(_Gains, _Losses);
+                decimal taxReturn = _CapitalGainsTax * minimum;
                 _Cash += taxReturn;
-                _Gains = 0;
-                _Losses = 0;
+                _Gains -= minimum;
+                _Losses -= minimum;
             }
         }
 
@@ -78,7 +83,7 @@ namespace CrashAndBurn.Common
         public Position Short(Stock stock, int count)
         {
             decimal pricePerStock = GetPricePerStock(stock);
-            decimal priceWithMargin = _Margin * count * pricePerStock + _OrderFees;
+            decimal priceWithMargin = _InitialMargin * count * pricePerStock + _OrderFees;
             if (priceWithMargin > _Cash)
             {
                 throw new ApplicationException("Unable to short stock, required margin exceeds funds.");
