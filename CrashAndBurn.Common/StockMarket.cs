@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CrashAndBurn.Common
 {
@@ -11,13 +12,20 @@ namespace CrashAndBurn.Common
         private decimal _Cash;
         private decimal _OrderFees;
         private decimal _CapitalGainsTax;
+
+        private bool _IsMarginAccount;
         private decimal _InitialMargin;
         private decimal _MaintenanceMargin;
+        private decimal _InitialMarginReserved;
+
+        private bool _MarginCallSellAllPositions = true;
+        private int _MarginCallCount;
 
         private decimal _Spread = 0.01m;
 
         private decimal _Gains = 0;
         private decimal _Losses = 0;
+
 
         public IReadOnlyCollection<Stock> Stocks
         {
@@ -39,15 +47,28 @@ namespace CrashAndBurn.Common
             }
         }
 
-        public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, DateTime date)
+        public void InitializeCashAccount(decimal cash, decimal orderFees, decimal capitalGainsTax, DateTime date)
         {
             _Cash = cash;
             _OrderFees = orderFees;
             _CapitalGainsTax = capitalGainsTax;
-            _InitialMargin = initialMargin;
-            _MaintenanceMargin = maintenanceMargin;
+
+            _IsMarginAccount = false;
+            _InitialMargin = 0.0m;
+            _MaintenanceMargin = 0.0m;
+            _InitialMarginReserved = 0.0m;
+            _MarginCallCount = 0;
 
             Date = date;
+        }
+
+        public void InitializeMarginAccount(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, DateTime date)
+        {
+            InitializeCashAccount(cash, orderFees, capitalGainsTax, date);
+
+            _IsMarginAccount = true;
+            _InitialMargin = initialMargin;
+            _MaintenanceMargin = maintenanceMargin;
         }
 
         public void NextDay()
@@ -56,6 +77,10 @@ namespace CrashAndBurn.Common
             while (Date.DayOfWeek == DayOfWeek.Saturday || Date.DayOfWeek == DayOfWeek.Sunday)
             {
                 Date = Date.AddDays(1);
+            }
+            if (_IsMarginAccount && BelowMaintenanceMargin())
+            {
+                MarginCall();
             }
             if (Date.Month != lastMonth)
             {
@@ -69,32 +94,44 @@ namespace CrashAndBurn.Common
 
         public Position Buy(Stock stock, int count)
         {
-            decimal pricePerStock = GetPricePerStock(stock);
-            decimal price = count * pricePerStock + _OrderFees;
-            if (price > _Cash)
+            decimal pricePerShare = GetPricePerShare(stock);
+            if (_IsMarginAccount)
             {
-                throw new ApplicationException("Unable to buy stock, not enough funds.");
+                ReserveInitialMargin(count, pricePerShare);
             }
-            var position = new Position(stock, count, pricePerStock, false);
+            else
+            {
+                decimal price = count * pricePerShare + _OrderFees;
+                if (price > _Cash)
+                {
+                    throw new ApplicationException("Unable to buy shares, not enough funds.");
+                }
+                _Cash -= price;
+            }
+            var position = new Position(stock, count, pricePerShare, false);
             _Positions.Add(position);
             return position;
         }
 
         public Position Short(Stock stock, int count)
         {
-            decimal pricePerStock = GetPricePerStock(stock);
-            decimal priceWithMargin = _InitialMargin * count * pricePerStock + _OrderFees;
-            if (priceWithMargin > _Cash)
+            if (!_IsMarginAccount)
             {
-                throw new ApplicationException("Unable to short stock, required margin exceeds funds.");
+                throw new ApplicationException("Shorting requires a margin account.");
             }
-            var position = new Position(stock, count, pricePerStock, true);
+            decimal pricePerShare = GetPricePerShare(stock);
+            ReserveInitialMargin(count, pricePerShare);
+            var position = new Position(stock, count, pricePerShare, true);
             _Positions.Add(position);
             return position;
         }
 
         public void Sell(Position position)
         {
+            if (_IsMarginAccount)
+            {
+                throw new NotImplementedException();
+            }
             decimal currentPrice = position.Stock.GetPrice(Date);
             decimal priceDelta = currentPrice - position.OriginalPrice;
             decimal capitalGains = position.Count * priceDelta;
@@ -109,7 +146,27 @@ namespace CrashAndBurn.Common
                 _Cash += position.Count * currentPrice;
                 BookCapitalGains(capitalGains);
             }
+            decimal initialMargin = GetInitialMargin(position.Count, position.OriginalPrice);
+            _InitialMargin -= initialMargin;
             _Positions.Remove(position);
+        }
+
+        private decimal GetInitialMargin(int count, decimal pricePerShare)
+        {
+            decimal initialMargin = _InitialMargin * count * pricePerShare;
+            return initialMargin;
+        }
+
+        private void ReserveInitialMargin(int count, decimal pricePerShare)
+        {
+            decimal initialMargin = GetInitialMargin(count, pricePerShare);
+            decimal cashRequired = _InitialMarginReserved + initialMargin + _OrderFees;
+            if (cashRequired > _Cash)
+            {
+                throw new ApplicationException("Unable to perform transaction, required margin exceeds funds.");
+            }
+            _Cash -= _OrderFees;
+            _InitialMarginReserved += initialMargin;
         }
 
         private void BookCapitalGains(decimal capitalGains)
@@ -125,10 +182,41 @@ namespace CrashAndBurn.Common
             }
         }
 
-        private decimal GetPricePerStock(Stock stock)
+        private decimal GetPricePerShare(Stock stock)
         {
             decimal pricePerStock = stock.GetPrice(Date) + _Spread;
             return pricePerStock;
+        }
+
+        private bool BelowMaintenanceMargin()
+        {
+            decimal equity = 0.0m;
+            foreach (var position in _Positions)
+            {
+                decimal currentPrice = position.Stock.GetPrice(Date);
+                decimal worth = position.Count * currentPrice;
+            }
+            throw new NotImplementedException();
+        }
+
+        private void MarginCall()
+        {
+            if (_MarginCallSellAllPositions)
+            {
+                foreach (var position in _Positions)
+                {
+                    Sell(position);
+                }
+            }
+            else
+            {
+                while (BelowMaintenanceMargin() && _Positions.Any())
+                {
+                    var position = _Positions.First();
+                    Sell(position);
+                }
+            }
+            _MarginCallCount++;
         }
     }
 }
