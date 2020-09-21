@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace CrashAndBurn.Common
@@ -10,6 +11,14 @@ namespace CrashAndBurn.Common
 		public string Id { get; private set; }
 
 		public List<StockData> History { get; private set; }
+
+		public static Stock FromFile(string path)
+		{
+			string id = Path.GetFileNameWithoutExtension(path);
+			var stockData = StockData.FromFile(path);
+			var stock = new Stock(id, stockData);
+			return stock;
+		}
 
 		public Stock(string id, List<StockData> history)
 		{

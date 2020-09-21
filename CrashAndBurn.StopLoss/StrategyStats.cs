@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace CrashAndBurn
+namespace CrashAndBurn.StopLoss
 {
 	class StrategyStats
 	{

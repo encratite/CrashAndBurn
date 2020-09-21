@@ -196,7 +196,7 @@ namespace CrashAndBurn.Common
 			{
 				foreach (var position in _Positions)
 				{
-					Sell(position);
+					Liquidate(position);
 				}
 			}
 			else
@@ -204,7 +204,7 @@ namespace CrashAndBurn.Common
 				while (BelowMaintenanceMargin() && _Positions.Any())
 				{
 					var position = _Positions.First();
-					Sell(position);
+					Liquidate(position);
 				}
 			}
 			MarginCallCount++;

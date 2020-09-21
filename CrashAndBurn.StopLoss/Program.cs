@@ -1,11 +1,11 @@
 ﻿using CrashAndBurn.Common;
-using CrashAndBurn.Strategy;
+using CrashAndBurn.StopLoss.Strategy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace CrashAndBurn
+namespace CrashAndBurn.StopLoss
 {
 	class Program
 	{

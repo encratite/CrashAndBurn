@@ -16,17 +16,6 @@ namespace CrashAndBurn.Common
 		public decimal AdjustedClose { get; private set; }
 		public long Volume { get; private set; }
 
-		public StockData(DateTime date, decimal open, decimal high, decimal low, decimal close, decimal adjustedClose, long volume)
-		{
-			Date = date;
-			Open = open;
-			High = high;
-			Low = low;
-			Close = close;
-			AdjustedClose = adjustedClose;
-			Volume = volume;
-		}
-
 		public static List<StockData> FromFile(string csvPath)
 		{
 			var lines = File.ReadAllLines(csvPath);
@@ -60,6 +49,17 @@ namespace CrashAndBurn.Common
 				throw new ApplicationException("Failed to parse stock data from .csv file.");
 			}
 			return history;
+		}
+
+		public StockData(DateTime date, decimal open, decimal high, decimal low, decimal close, decimal adjustedClose, long volume)
+		{
+			Date = date;
+			Open = open;
+			High = high;
+			Low = low;
+			Close = close;
+			AdjustedClose = adjustedClose;
+			Volume = volume;
 		}
 	}
 }

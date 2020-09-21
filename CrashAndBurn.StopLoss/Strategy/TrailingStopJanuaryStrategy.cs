@@ -1,7 +1,7 @@
 ﻿using CrashAndBurn.Common;
 using System;
 
-namespace CrashAndBurn.Strategy
+namespace CrashAndBurn.StopLoss.Strategy
 {
     class TrailingStopJanuaryStrategy : TrailingStopStrategy
     {

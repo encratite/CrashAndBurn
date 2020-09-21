@@ -1,6 +1,6 @@
 ﻿using CrashAndBurn.Common;
 
-namespace CrashAndBurn.Strategy
+namespace CrashAndBurn.StopLoss.Strategy
 {
     class BuyAndHoldStrategy : BaseStrategy
     {

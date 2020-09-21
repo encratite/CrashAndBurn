@@ -1,25 +1,24 @@
 ﻿using CrashAndBurn.Common;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace CrashAndBurn.Strategy
+namespace CrashAndBurn.StopLoss.Strategy
 {
-    class TrailingStopVolatilityStrategy : TrailingStopStrategy
+    class TrailingStopRallyStrategy : TrailingStopStrategy
     {
-        private const string _StrategyName = "Trailing stop, volatility window";
+        private const string _StrategyName = "Trailing stop, rally";
 
         public override string StrategyName => _StrategyName;
 
-        private decimal _VolatilityPercentage;
+        private decimal _RallyPercentage;
 
         private const int _StockDataBufferLimit = 20;
         private List<StockData> _StockDataBuffer = new List<StockData>();
 
-        public TrailingStopVolatilityStrategy(decimal trailingStopPercentage, decimal volatilityPercentage)
-            : base($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} volatility)", trailingStopPercentage, null)
+        public TrailingStopRallyStrategy(decimal trailingStopPercentage, decimal volatilityPercentage)
+            : base($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} rally)", trailingStopPercentage, null)
         {
-            _VolatilityPercentage = volatilityPercentage;
+            _RallyPercentage = volatilityPercentage;
         }
 
         public override void Buy(StockData stockData)
@@ -45,7 +44,7 @@ namespace CrashAndBurn.Strategy
             {
                 Sell(stockData, true);
             }
-            else if (!TrailingStop.HasValue && IsLowVolatility())
+            else if (!TrailingStop.HasValue && IsRally(stockData))
             {
                 Buy(stockData);
             }
@@ -59,36 +58,15 @@ namespace CrashAndBurn.Strategy
             }
         }
 
-        private bool IsLowVolatility()
+        private bool IsRally(StockData stockData)
         {
             if (_StockDataBuffer.Count < _StockDataBufferLimit)
             {
                 return false;
             }
-            decimal? low = null;
-            decimal? high = null;
-            foreach (var stockData in _StockDataBuffer)
-            {
-                if (low.HasValue)
-                {
-                    low = Math.Min(low.Value, stockData.Low);
-                }
-                else
-                {
-                    low = stockData.Low;
-                }
-                if (high.HasValue)
-                {
-                    high = Math.Max(high.Value, stockData.High);
-                }
-                else
-                {
-                    high = stockData.High;
-                }
-            }
-            decimal volatility = high.Value / low.Value - 1.0m;
-            bool isLowVolatility = volatility < _VolatilityPercentage;
-            return isLowVolatility;
+            decimal performance = stockData.Open / _StockDataBuffer.First().Open - 1.0m;
+            bool isRally = performance > _RallyPercentage;
+            return isRally;
         }
     }
 }
