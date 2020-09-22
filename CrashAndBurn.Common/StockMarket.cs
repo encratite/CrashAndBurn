@@ -134,6 +134,27 @@ namespace CrashAndBurn.Common
 			_Positions.Remove(position);
 		}
 
+		public void LiquidateAll()
+		{
+			foreach (var position in _Positions)
+			{
+				Liquidate(position);
+			}
+		}
+
+		public DateRange GetDateRange()
+		{
+			var dateRange = new DateRange();
+			foreach (var stock in Stocks)
+			{
+				foreach (var stockData in stock.History)
+				{
+					dateRange.Process(stockData.Date);
+				}
+			}
+			return dateRange;
+		}
+
 		private bool HasEnoughFunds(decimal price)
 		{
 			return price > _Cash - _InitialMarginReserved;
@@ -194,10 +215,7 @@ namespace CrashAndBurn.Common
 		{
 			if (_MarginCallSellAllPositions)
 			{
-				foreach (var position in _Positions)
-				{
-					Liquidate(position);
-				}
+				LiquidateAll();
 			}
 			else
 			{

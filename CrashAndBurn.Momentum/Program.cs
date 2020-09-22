@@ -29,23 +29,52 @@ namespace CrashAndBurn.Momentum
 			}
 			Output.WriteLine($"Loaded {stocks.Count} stock(s).");
 			var stockMarket = new StockMarket(stocks);
-			EvaluateStrategies(referenceIndex, stockMarket);
+			EvaluateStrategies(referenceIndex, stockMarket, null, null);
 		}
 
-		private static void EvaluateStrategies(Stock referenceIndex, StockMarket stockMarket)
+		private static void EvaluateStrategies(Stock referenceIndex, StockMarket stockMarket, int? firstYear, int? lastYear)
 		{
+			var dateRange = stockMarket.GetDateRange();
+			DateTime startDate = GetStartEndDate(firstYear, false, dateRange);
+			DateTime endDate = GetStartEndDate(lastYear, true, dateRange);
 			var strategies = new BaseStrategy[] { };
 			foreach (var strategy in strategies)
 			{
-				var date = new DateTime(2000, 1, 1);
-				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, date);
-				while (stockMarket.Date < DateTime.Now)
+				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, startDate);
+				while (stockMarket.Date < endDate)
 				{
 					strategy.Trade(stockMarket);
 					stockMarket.NextDay();
 				}
+				stockMarket.LiquidateAll();
 			}
-			throw new NotImplementedException();
+		}
+
+		private static DateTime GetYearDate(int year)
+		{
+			return new DateTime(year, 1, 1);
+		}
+
+		private static DateTime GetStartEndDate(int? year, bool isMax, DateRange dateRange)
+		{
+			DateTime startEndDate;
+			DateTime minMaxDate = isMax ? dateRange.Max.Value : dateRange.Min.Value;
+			if (year.HasValue)
+			{
+				startEndDate = GetYearDate(year.Value);
+				if (
+					(!isMax && startEndDate < minMaxDate) ||
+					(isMax && startEndDate > minMaxDate)
+				)
+				{
+					startEndDate = minMaxDate;
+				}
+			}
+			else
+			{
+				startEndDate = minMaxDate;
+			}
+			return startEndDate;
 		}
 	}
 }
