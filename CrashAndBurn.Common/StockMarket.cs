@@ -115,7 +115,7 @@ namespace CrashAndBurn.Common
 
 		public void Liquidate(Position position)
 		{
-			decimal currentPrice = position.Stock.GetPrice(Date);
+			decimal currentPrice = position.Stock.GetPrice(Date).Value;
 			decimal priceDelta = currentPrice - position.OriginalPrice;
 			decimal capitalGains = position.Count * priceDelta;
 			if (position.IsShort)
@@ -181,7 +181,7 @@ namespace CrashAndBurn.Common
 
 		private decimal GetPricePerShare(Stock stock)
 		{
-			decimal pricePerStock = stock.GetPrice(Date) + _Spread;
+			decimal pricePerStock = stock.GetPrice(Date).Value + _Spread;
 			return pricePerStock;
 		}
 
@@ -191,7 +191,7 @@ namespace CrashAndBurn.Common
 			decimal shortMarketValue = 0.0m;
 			foreach (var position in _Positions)
 			{
-				decimal currentPrice = position.Stock.GetPrice(Date);
+				decimal currentPrice = position.Stock.GetPrice(Date).Value;
 				decimal value = position.Count * currentPrice;
 				if (position.IsShort)
 				{

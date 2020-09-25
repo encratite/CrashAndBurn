@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace CrashAndBurn.Common
 {
@@ -41,9 +40,9 @@ namespace CrashAndBurn.Common
 			return Id.GetHashCode();
 		}
 
-		public decimal GetPrice(DateTime date)
+		public decimal? GetPrice(DateTime date)
 		{
-			var latestStockData = History.First();
+			StockData latestStockData = null;
 			foreach (var stockData in History)
 			{
 				if (stockData.Date > date)
@@ -52,7 +51,14 @@ namespace CrashAndBurn.Common
 				}
 				latestStockData = stockData;
 			}
-			return latestStockData.Open;
+			if (latestStockData != null)
+			{
+				return latestStockData.Open;
+			}
+			else
+			{
+				return null;
+			}
 		}
 	}
 }
