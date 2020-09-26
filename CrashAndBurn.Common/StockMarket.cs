@@ -24,6 +24,10 @@ namespace CrashAndBurn.Common
 		private decimal _Gains = 0;
 		private decimal _Losses = 0;
 
+		public static decimal GetPerformance(decimal now, decimal then)
+		{
+			return now / then - 1.0m;
+		}
 
 		public IReadOnlyCollection<Stock> Stocks
 		{
@@ -115,7 +119,7 @@ namespace CrashAndBurn.Common
 
 		public void Liquidate(Position position)
 		{
-			decimal currentPrice = position.Stock.GetPrice(Date).Value;
+			decimal currentPrice = position.Stock.GetPrice(Date);
 			decimal priceDelta = currentPrice - position.OriginalPrice;
 			decimal capitalGains = position.Count * priceDelta;
 			if (position.IsShort)
@@ -155,9 +159,15 @@ namespace CrashAndBurn.Common
 			return dateRange;
 		}
 
-		private bool HasEnoughFunds(decimal price)
+		public decimal GetAvailableFunds()
 		{
-			return price > _Cash - _InitialMarginReserved;
+			return _Cash - _InitialMarginReserved;
+		}
+
+		public bool HasEnoughFunds(decimal price)
+		{
+			decimal availableFunds = GetAvailableFunds();
+			return price > availableFunds;
 		}
 
 		private decimal GetInitialMargin(int count, decimal pricePerShare)
@@ -181,7 +191,7 @@ namespace CrashAndBurn.Common
 
 		private decimal GetPricePerShare(Stock stock)
 		{
-			decimal pricePerStock = stock.GetPrice(Date).Value + _Spread;
+			decimal pricePerStock = stock.GetPrice(Date) + _Spread;
 			return pricePerStock;
 		}
 
@@ -191,7 +201,7 @@ namespace CrashAndBurn.Common
 			decimal shortMarketValue = 0.0m;
 			foreach (var position in _Positions)
 			{
-				decimal currentPrice = position.Stock.GetPrice(Date).Value;
+				decimal currentPrice = position.Stock.GetPrice(Date);
 				decimal value = position.Count * currentPrice;
 				if (position.IsShort)
 				{

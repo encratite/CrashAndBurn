@@ -150,16 +150,11 @@ namespace CrashAndBurn.StopLoss
 
 		private static void WritePerformance(decimal cash, decimal referenceCash)
 		{
-			decimal performance = GetPerformance(cash, referenceCash);
+			decimal performance = StockMarket.GetPerformance(cash, referenceCash);
 			var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
 			Output.Write(" (");
 			Output.Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
 			Output.WriteLine(")");
-		}
-
-		private static decimal GetPerformance(decimal cash, decimal referenceCash)
-		{
-			return cash / referenceCash - 1.0m;
 		}
 	}
 }

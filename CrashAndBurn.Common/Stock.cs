@@ -40,7 +40,13 @@ namespace CrashAndBurn.Common
 			return Id.GetHashCode();
 		}
 
-		public decimal? GetPrice(DateTime date)
+		public decimal GetPrice(DateTime date)
+		{
+			var price = MaybeGetPrice(date);
+			return price.Value;
+		}
+
+		public decimal? MaybeGetPrice(DateTime date)
 		{
 			StockData latestStockData = null;
 			foreach (var stockData in History)
