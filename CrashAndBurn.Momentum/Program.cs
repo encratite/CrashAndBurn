@@ -1,6 +1,7 @@
 ﻿using CrashAndBurn.Common;
 using CrashAndBurn.Momentum.Strategy;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -37,7 +38,7 @@ namespace CrashAndBurn.Momentum
 			var dateRange = stockMarket.GetDateRange();
 			DateTime startDate = GetStartEndDate(firstYear, false, dateRange);
 			DateTime endDate = GetStartEndDate(lastYear, true, dateRange);
-			var strategies = new BaseStrategy[] { };
+			var strategies = GetStrategies();
 			foreach (var strategy in strategies)
 			{
 				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, startDate);
@@ -48,6 +49,27 @@ namespace CrashAndBurn.Momentum
 				}
 				stockMarket.LiquidateAll();
 			}
+		}
+
+		private static List<BaseStrategy> GetStrategies()
+		{
+			var strategies = new List<BaseStrategy>();
+			for (int stocks = 3; stocks <= 5; stocks++)
+			{
+				for (decimal stopLossThreshold = 0.05m; stopLossThreshold <= 0.15m; stopLossThreshold += 0.05m)
+				{
+					for (int holdDays = 15; holdDays <= 60; holdDays *= 2)
+					{
+						const int historyDays = 360;
+						for (int ignoreDays = 30; ignoreDays <= 60; ignoreDays += 30)
+						{
+							var strategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
+							strategies.Add(strategy);
+						}
+					}
+				}
+			}
+			return strategies;
 		}
 
 		private static DateTime GetYearDate(int year)
