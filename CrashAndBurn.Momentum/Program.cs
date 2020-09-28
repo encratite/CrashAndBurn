@@ -2,9 +2,11 @@
 using CrashAndBurn.Momentum.Strategy;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 
 namespace CrashAndBurn.Momentum
 {
@@ -21,14 +23,12 @@ namespace CrashAndBurn.Momentum
 			}
 			string referenceIndexPath = arguments[0];
 			string stockFolder = arguments[1];
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
 			var referenceIndex = Stock.FromFile(referenceIndexPath);
-			var stockPaths = Directory.GetFiles(stockFolder, "*.csv");
-			var stocks = stockPaths.Select(path => Stock.FromFile(path)).ToList();
-			if (!stocks.Any())
-			{
-				throw new ApplicationException("Failed to find any stocks.");
-			}
-			Output.WriteLine($"Loaded {stocks.Count} stock(s).");
+			var stocks = LoadStocks(stockFolder);
+			stopwatch.Stop();
+			Output.WriteLine($"Loaded {stocks.Count} stock(s) in {stopwatch.Elapsed.Seconds:0.0} s.");
 			var stockMarket = new StockMarket(stocks);
 			EvaluateStrategies(referenceIndex, stockMarket, null, null);
 		}
@@ -97,6 +97,49 @@ namespace CrashAndBurn.Momentum
 				startEndDate = minMaxDate;
 			}
 			return startEndDate;
+		}
+
+		private static List<Stock> LoadStocks(string stockFolder)
+		{
+			var stockPaths = Directory.GetFiles(stockFolder, "*.csv").ToList();
+			var stocks = new List<Stock>();
+			var threads = new List<Thread>();
+			for (int i = 0; i < Environment.ProcessorCount; i++)
+			{
+				var thread = new Thread(() =>
+				{
+					do
+					{
+						string stockPath;
+						lock (stockPaths)
+						{
+							if (!stockPaths.Any())
+							{
+								break;
+							}
+							stockPath = stockPaths.First();
+							stockPaths.RemoveAt(0);
+						}
+						var stock = Stock.FromFile(stockPath);
+						lock (stocks)
+						{
+							stocks.Add(stock);
+						}
+					}
+					while (true);
+				});
+				thread.Start();
+				threads.Add(thread);
+			}
+			foreach (var thread in threads)
+			{
+				thread.Join();
+			}
+			if (!stocks.Any())
+			{
+				throw new ApplicationException("Failed to find any stocks.");
+			}
+			return stocks;
 		}
 	}
 }

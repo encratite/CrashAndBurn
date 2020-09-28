@@ -19,7 +19,7 @@ namespace CrashAndBurn.Common
 		public static List<StockData> FromFile(string csvPath)
 		{
 			var lines = File.ReadAllLines(csvPath);
-			var pattern = new Regex(@"^(?<year>\d+)-(?<month>\d+)-(?<day>\d+),(?<open>\d+\.\d+),(?<high>\d+\.\d+),(?<low>\d+\.\d+),(?<close>\d+\.\d+),(?<adjustedClose>\d+\.\d+),(?<volume>\d+)");
+			var pattern = new Regex(@"^(?<year>\d+)-(?<month>\d+)-(?<day>\d+),(?<open>\d+\.\d+),(?<high>\d+\.\d+),(?<low>\d+\.\d+),(?<close>\d+\.\d+),(?<adjustedClose>\d+\.\d+),(?<volume>\d+)$");
 			var history = new List<StockData>();
 			foreach (string line in lines)
 			{
