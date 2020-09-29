@@ -39,6 +39,15 @@ namespace CrashAndBurn.Common
 					decimal close = parseDecimal("close");
 					decimal adjustedClose = parseDecimal("adjustedClose");
 					long volume = parseLong("volume");
+					if (open == 0.0m)
+					{
+						// Workaround for older data.
+						open = close;
+					}
+					if (close == 0.0m || low == 0.0m || close == 0.0m)
+					{
+						throw new ApplicationException("Malformed stock data.");
+					}
 					var date = new DateTime(year, month, day);
 					var stockData = new StockData(date, open, high, low, close, adjustedClose, volume);
 					history.Add(stockData);

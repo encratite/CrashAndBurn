@@ -61,7 +61,7 @@ namespace CrashAndBurn.Momentum
 					for (int holdDays = 15; holdDays <= 60; holdDays *= 2)
 					{
 						const int historyDays = 360;
-						for (int ignoreDays = 30; ignoreDays <= 60; ignoreDays += 30)
+						for (int ignoreDays = 0; ignoreDays <= 60; ignoreDays += 30)
 						{
 							var strategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
 							strategies.Add(strategy);
@@ -69,6 +69,7 @@ namespace CrashAndBurn.Momentum
 					}
 				}
 			}
+			strategies.RemoveRange(1, strategies.Count - 1);
 			return strategies;
 		}
 

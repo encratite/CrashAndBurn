@@ -69,10 +69,11 @@ namespace CrashAndBurn.Common
 		public void NextDay()
 		{
 			int lastMonth = Date.Month;
-			while (Date.DayOfWeek == DayOfWeek.Saturday || Date.DayOfWeek == DayOfWeek.Sunday)
+			do
 			{
 				Date = Date.AddDays(1);
 			}
+			while (Date.DayOfWeek == DayOfWeek.Saturday || Date.DayOfWeek == DayOfWeek.Sunday);
 			if (BelowMaintenanceMargin())
 			{
 				MarginCall();
