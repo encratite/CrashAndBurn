@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace CrashAndBurn.Common
 {
@@ -9,7 +10,9 @@ namespace CrashAndBurn.Common
 		// Symbol or ISIN.
 		public string Id { get; private set; }
 
-		public List<StockData> History { get; private set; }
+		public SortedDictionary<DateTime, StockData> History { get; private set; }
+
+		private StockData _Last;
 
 		public static Stock FromFile(string path)
 		{
@@ -19,10 +22,15 @@ namespace CrashAndBurn.Common
 			return stock;
 		}
 
-		public Stock(string id, List<StockData> history)
+		public Stock(string id, IEnumerable<StockData> history)
 		{
 			Id = id;
-			History = history;
+			History = new SortedDictionary<DateTime, StockData>();
+			foreach (var stockData in history)
+			{
+				History[stockData.Date] = stockData;
+				_Last = stockData;
+			}
 		}
 
 		public override bool Equals(object obj)
@@ -48,23 +56,21 @@ namespace CrashAndBurn.Common
 
 		public decimal? MaybeGetPrice(DateTime date)
 		{
-			StockData latestStockData = null;
-			foreach (var stockData in History)
+			if (History.Any())
 			{
-				if (stockData.Date > date)
+				for (int i = 0; i < 3; i++)
 				{
-					break;
+					if (History.TryGetValue(date - TimeSpan.FromDays(i), out StockData stockData))
+					{
+						return stockData.Open;
+					}
 				}
-				latestStockData = stockData;
+				if (_Last.Date <= date)
+				{
+					return _Last.Open;
+				}
 			}
-			if (latestStockData != null)
-			{
-				return latestStockData.Open;
-			}
-			else
-			{
-				return null;
-			}
+			return null;
 		}
 	}
 }

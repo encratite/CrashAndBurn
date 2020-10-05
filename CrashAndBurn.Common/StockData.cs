@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace CrashAndBurn.Common
 {
-	public class StockData
+	public struct StockData
 	{
 		public DateTime Date { get; private set; }
 		public decimal Open { get; private set; }

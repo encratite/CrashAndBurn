@@ -70,6 +70,10 @@ namespace CrashAndBurn.Momentum.Strategy
 				return;
 			}
 			var stocks = GetStocksByRating(stockMarket);
+			if (stocks.Count < 4 * _Stocks)
+			{
+				return;
+			}
 			decimal fundsPerPosition = (stockMarket.GetAvailableFunds() - stocksToAcquire * Constants.OrderFees) / stocksToAcquire;
 			fundsPerPosition = Math.Max(fundsPerPosition, _MinFundsPerPosition);
 			for (; stocksToAcquire > 0 && stockMarket.HasEnoughFunds(_MinFundsPerPosition); stocksToAcquire--)
@@ -113,7 +117,7 @@ namespace CrashAndBurn.Momentum.Strategy
 		{
 			DateTime from = stockMarket.Date - TimeSpan.FromDays(_HistoryDays);
 			DateTime to = stockMarket.Date - TimeSpan.FromDays(_IgnoreDays);
-			var filteredStocks = stockMarket.Stocks.Where(s => s.MaybeGetPrice(from).HasValue && !stockMarket.Positions.Any(p => p.Stock == s));
+			var filteredStocks = stockMarket.Stocks.Where(s => s.MaybeGetPrice(from).HasValue && s.MaybeGetPrice(to).HasValue && !stockMarket.Positions.Any(p => p.Stock == s));
 			var orderedStocks = filteredStocks.OrderBy(s => s.GetPrice(to) / s.GetPrice(from));
 			var stocks = new LinkedList<Stock>(orderedStocks);
 			return stocks;

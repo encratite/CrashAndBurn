@@ -152,9 +152,11 @@ namespace CrashAndBurn.Common
 			var dateRange = new DateRange();
 			foreach (var stock in Stocks)
 			{
-				foreach (var stockData in stock.History)
+				var history = stock.History;
+				if (history.Any())
 				{
-					dateRange.Process(stockData.Date);
+					dateRange.Process(history.First().Key);
+					dateRange.Process(history.Last().Key);
 				}
 			}
 			return dateRange;
@@ -168,7 +170,7 @@ namespace CrashAndBurn.Common
 		public bool HasEnoughFunds(decimal price)
 		{
 			decimal availableFunds = GetAvailableFunds();
-			return price > availableFunds;
+			return price <= availableFunds;
 		}
 
 		private decimal GetInitialMargin(int count, decimal pricePerShare)

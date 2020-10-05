@@ -28,9 +28,13 @@ namespace CrashAndBurn.Momentum
 			var referenceIndex = Stock.FromFile(referenceIndexPath);
 			var stocks = LoadStocks(stockFolder);
 			stopwatch.Stop();
-			Output.WriteLine($"Loaded {stocks.Count} stock(s) in {stopwatch.Elapsed.Seconds:0.0} s.");
+			Output.WriteLine($"Loaded {stocks.Count} stock(s) in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 			var stockMarket = new StockMarket(stocks);
+			stopwatch.Reset();
+			stopwatch.Start();
 			EvaluateStrategies(referenceIndex, stockMarket, null, null);
+			stopwatch.Stop();
+			Output.WriteLine($"Evaluated strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 		}
 
 		private static void EvaluateStrategies(Stock referenceIndex, StockMarket stockMarket, int? firstYear, int? lastYear)
