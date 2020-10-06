@@ -72,5 +72,10 @@ namespace CrashAndBurn.Common
 			}
 			return null;
 		}
+
+		public override string ToString()
+		{
+			return Id;
+		}
 	}
 }

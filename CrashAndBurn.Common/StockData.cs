@@ -70,5 +70,10 @@ namespace CrashAndBurn.Common
 			AdjustedClose = adjustedClose;
 			Volume = volume;
 		}
+
+		public override string ToString()
+		{
+			return $"{Date.ToShortDateString()} {Open}";
+		}
 	}
 }

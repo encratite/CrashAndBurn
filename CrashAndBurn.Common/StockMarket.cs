@@ -92,7 +92,7 @@ namespace CrashAndBurn.Common
 		{
 			decimal pricePerShare = GetPricePerShare(stock);
 			decimal price = count * pricePerShare + orderFees;
-			if (HasEnoughFunds(price))
+			if (!HasEnoughFunds(price))
 			{
 				return null;
 			}
@@ -107,7 +107,7 @@ namespace CrashAndBurn.Common
 			decimal pricePerShare = GetPricePerShare(stock);
 			decimal initialMargin = GetInitialMargin(count, pricePerShare);
 			decimal cashRequired = initialMargin + orderFees;
-			if (HasEnoughFunds(cashRequired))
+			if (!HasEnoughFunds(cashRequired))
 			{
 				return null;
 			}
@@ -141,7 +141,7 @@ namespace CrashAndBurn.Common
 
 		public void LiquidateAll()
 		{
-			foreach (var position in positions)
+			foreach (var position in positions.ToList())
 			{
 				Liquidate(position);
 			}

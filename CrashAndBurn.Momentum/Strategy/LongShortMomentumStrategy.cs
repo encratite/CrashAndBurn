@@ -43,7 +43,8 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private void StopLossCheck(StockMarket stockMarket)
 		{
-			foreach (var position in stockMarket.Positions)
+			var positions = stockMarket.Positions.ToList();
+			foreach (var position in positions)
 			{
 				decimal currentPrice = position.Stock.GetPrice(stockMarket.Date);
 				decimal performance;
@@ -64,23 +65,24 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private void Reevaluate(StockMarket stockMarket)
 		{
-			int stocksToAcquire = 2 * this.stocks - stockMarket.Positions.Count;
+			int stocksToAcquire = 2 * stocks - stockMarket.Positions.Count;
 			if (stocksToAcquire == 0)
 			{
 				return;
 			}
-			var stocks = GetStocksByRating(stockMarket);
-			if (stocks.Count < 4 * this.stocks)
+			var ratedStocks = GetStocksByRating(stockMarket);
+			if (ratedStocks.Count < 4 * stocks)
 			{
 				return;
 			}
-			decimal fundsPerPosition = (stockMarket.GetAvailableFunds() - stocksToAcquire * Constants.OrderFees) / stocksToAcquire;
+			decimal availableFunds = stockMarket.GetAvailableFunds();
+			decimal fundsPerPosition = (availableFunds - stocksToAcquire * Constants.OrderFees) / stocksToAcquire;
 			fundsPerPosition = Math.Max(fundsPerPosition, MinFundsPerPosition);
 			for (; stocksToAcquire > 0 && stockMarket.HasEnoughFunds(MinFundsPerPosition); stocksToAcquire--)
 			{
 				int longPositions = stockMarket.Positions.Count(p => !p.IsShort);
-				bool goShort = longPositions >= this.stocks;
-				var stock = GetAndRemoveStock(goShort, stocks);
+				bool goShort = longPositions >= stocks;
+				var stock = GetAndRemoveStock(goShort, ratedStocks);
 				decimal currentPrice = stock.GetPrice(stockMarket.Date);
 				int shares = (int)Math.Floor(fundsPerPosition / currentPrice);
 				if (shares > 0)
