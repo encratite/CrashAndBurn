@@ -6,31 +6,31 @@ namespace CrashAndBurn.StopLoss.Strategy
 {
     class TrailingStopRallyStrategy : TrailingStopStrategy
     {
-        private const string _StrategyName = "Trailing stop, rally";
+        private const string BaseStrategyName = "Trailing stop, rally";
 
-        public override string StrategyName => _StrategyName;
+        public override string StrategyName => BaseStrategyName;
 
-        private decimal _RallyPercentage;
+        private decimal rallyPercentage;
 
-        private const int _StockDataBufferLimit = 20;
-        private List<StockData> _StockDataBuffer = new List<StockData>();
+        private const int stockDataBufferLimit = 20;
+        private List<StockData> stockDataBuffer = new List<StockData>();
 
         public TrailingStopRallyStrategy(decimal trailingStopPercentage, decimal volatilityPercentage)
-            : base($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} rally)", trailingStopPercentage, null)
+            : base($"{BaseStrategyName} ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} rally)", trailingStopPercentage, null)
         {
-            _RallyPercentage = volatilityPercentage;
+            rallyPercentage = volatilityPercentage;
         }
 
         public override void Buy(StockData stockData)
         {
             base.Buy(stockData);
-            _StockDataBuffer.Clear();
+            stockDataBuffer.Clear();
         }
 
         public override void Sell(StockData stockData, bool low)
         {
             base.Sell(stockData, low);
-            _StockDataBuffer.Clear();
+            stockDataBuffer.Clear();
         }
 
         public override void ProcessStockData(StockData stockData)
@@ -50,22 +50,22 @@ namespace CrashAndBurn.StopLoss.Strategy
             }
             else if (!TrailingStop.HasValue)
             {
-                _StockDataBuffer.Add(stockData);
-                if (_StockDataBuffer.Count > _StockDataBufferLimit)
+                stockDataBuffer.Add(stockData);
+                if (stockDataBuffer.Count > stockDataBufferLimit)
                 {
-                    _StockDataBuffer.Remove(_StockDataBuffer.First());
+                    stockDataBuffer.Remove(stockDataBuffer.First());
                 }
             }
         }
 
         private bool IsRally(StockData stockData)
         {
-            if (_StockDataBuffer.Count < _StockDataBufferLimit)
+            if (stockDataBuffer.Count < stockDataBufferLimit)
             {
                 return false;
             }
-            decimal performance = stockData.Open / _StockDataBuffer.First().Open - 1.0m;
-            bool isRally = performance > _RallyPercentage;
+            decimal performance = stockData.Open / stockDataBuffer.First().Open - 1.0m;
+            bool isRally = performance > rallyPercentage;
             return isRally;
         }
     }

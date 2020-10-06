@@ -5,45 +5,45 @@ namespace CrashAndBurn.StopLoss.Strategy
 {
     class StopLossStrategy : BaseStrategy
     {
-        private const string _StrategyName = "Stop-loss";
+        private const string BaseStrategyName = "Stop-loss";
 
-        public override string StrategyName => _StrategyName;
+        public override string StrategyName => BaseStrategyName;
 
-        private decimal _StopLossPercentage;
-        private int _RecoveryDays;
+        private decimal stopLossPercentage;
+        private int recoveryDays;
 
-        private decimal? _StopLoss;
-        private DateTime? _RecoveryDate;
+        private decimal? stopLoss;
+        private DateTime? recoveryDate;
 
         public StopLossStrategy(decimal stopLossPercentage, int recoveryDays)
-            : base($"{_StrategyName} ({stopLossPercentage:P1} pullback, {recoveryDays} recovery days)")
+            : base($"{BaseStrategyName} ({stopLossPercentage:P1} pullback, {recoveryDays} recovery days)")
         {
-            _StopLossPercentage = stopLossPercentage;
-            _RecoveryDays = recoveryDays;
+            this.stopLossPercentage = stopLossPercentage;
+            this.recoveryDays = recoveryDays;
         }
 
         public override void Buy(StockData stockData)
         {
             base.Buy(stockData);
             decimal price = stockData.Open;
-            _StopLoss = (1.0m - _StopLossPercentage) * price;
-            _RecoveryDate = null;
+            stopLoss = (1.0m - stopLossPercentage) * price;
+            recoveryDate = null;
         }
 
         public override void Sell(StockData stockData, bool low)
         {
             base.Sell(stockData, low);
-            _StopLoss = null;
-            _RecoveryDate = stockData.Date.AddDays(_RecoveryDays);
+            stopLoss = null;
+            recoveryDate = stockData.Date.AddDays(recoveryDays);
         }
 
         public override void ProcessStockData(StockData stockData)
         {
-            if (_StopLoss.HasValue && stockData.Low <= _StopLoss.Value)
+            if (stopLoss.HasValue && stockData.Low <= stopLoss.Value)
             {
                 Sell(stockData, true);
             }
-            else if (_RecoveryDate.HasValue && stockData.Date >= _RecoveryDate.Value)
+            else if (recoveryDate.HasValue && stockData.Date >= recoveryDate.Value)
             {
                 Buy(stockData);
             }

@@ -4,12 +4,12 @@ namespace CrashAndBurn.StopLoss.Strategy
 {
     class BuyAndHoldStrategy : BaseStrategy
     {
-        private const string _StrategyName = "Buy and hold";
+        private const string BaseStrategyName = "Buy and hold";
 
-        public override string StrategyName => _StrategyName;
+        public override string StrategyName => BaseStrategyName;
 
         public BuyAndHoldStrategy()
-            : base(_StrategyName)
+            : base(BaseStrategyName)
         {
         }
 

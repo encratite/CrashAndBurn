@@ -12,11 +12,11 @@ namespace CrashAndBurn.StopLoss.Strategy
 
         protected bool FirstPurchase { get; set; }
 
-        private int _Shares;
-        private decimal _OrderFees;
-        private decimal _CapitalGainsTax;
+        private int shares;
+        private decimal orderFees;
+        private decimal capitalGainsTax;
 
-        private decimal? _OriginalPrice;
+        private decimal? originalPrice;
 
         public BaseStrategy(string name)
         {
@@ -27,37 +27,37 @@ namespace CrashAndBurn.StopLoss.Strategy
         {
             Cash = initialCash;
             FirstPurchase = true;
-            _Shares = 0;
-            _OrderFees = orderFees;
-            _CapitalGainsTax = capitalGainsTax;
+            shares = 0;
+            this.orderFees = orderFees;
+            this.capitalGainsTax = capitalGainsTax;
         }
 
         public virtual void Buy(StockData stockData)
         {
             decimal price = stockData.Open;
-            if (Cash >= 2 * _OrderFees + price)
+            if (Cash >= 2 * orderFees + price)
             {
-                Cash -= _OrderFees;
-                _Shares = (int)Math.Floor((Cash - _OrderFees) / price);
-                _OriginalPrice = _Shares * price;
-                Cash -= _OriginalPrice.Value;
+                Cash -= orderFees;
+                shares = (int)Math.Floor((Cash - orderFees) / price);
+                originalPrice = shares * price;
+                Cash -= originalPrice.Value;
                 FirstPurchase = false;
             }
         }
 
         public virtual void Sell(StockData stockData, bool low = false)
         {
-            if (_Shares > 0 && Cash >= _OrderFees)
+            if (shares > 0 && Cash >= orderFees)
             {
                 decimal price = low ? stockData.Low : stockData.Open;
-                decimal value = _Shares * price;
-                Cash += value - _OrderFees;
-                if (value > _OriginalPrice.Value)
+                decimal value = shares * price;
+                Cash += value - orderFees;
+                if (value > originalPrice.Value)
                 {
-                    Cash -= _CapitalGainsTax * (_OriginalPrice.Value - value);
+                    Cash -= capitalGainsTax * (originalPrice.Value - value);
                 }
-                _Shares = 0;
-                _OriginalPrice = null;
+                shares = 0;
+                originalPrice = null;
             }
         }
 

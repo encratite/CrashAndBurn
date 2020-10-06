@@ -7,24 +7,24 @@ namespace CrashAndBurn.Momentum.Strategy
 {
 	class LongShortMomentumStrategy : BaseStrategy
 	{
-		private const decimal _MinFundsPerPosition = 1000.0m;
+		private const decimal MinFundsPerPosition = 1000.0m;
 
-		private int _Stocks;
-		private decimal _StopLossThreshold;
-		private int _HoldDays;
-		private int _HistoryDays;
-		private int _IgnoreDays;
+		private int stocks;
+		private decimal stopLossThreshold;
+		private int holdDays;
+		private int historyDays;
+		private int ignoreDays;
 
-		private DateTime? _LastReevaluation = null;
+		private DateTime? lastReevaluation = null;
 
 		public LongShortMomentumStrategy(int stocks, decimal stopLossThreshold, int holdDays, int historyDays, int ignoreDays)
 			: base($"Long-short momentum ({stocks} stocks, {stopLossThreshold:P0} stop-loss threshold, hold for {holdDays} days, {historyDays} days of history, ignore past {ignoreDays} days)")
 		{
-			_Stocks = stocks;
-			_StopLossThreshold = stopLossThreshold;
-			_HoldDays = holdDays;
-			_HistoryDays = historyDays;
-			_IgnoreDays = ignoreDays;
+			this.stocks = stocks;
+			this.stopLossThreshold = stopLossThreshold;
+			this.holdDays = holdDays;
+			this.historyDays = historyDays;
+			this.ignoreDays = ignoreDays;
 		}
 
 		public override void Trade(StockMarket stockMarket)
@@ -32,12 +32,12 @@ namespace CrashAndBurn.Momentum.Strategy
 			StopLossCheck(stockMarket);
 			if
 			(
-				_LastReevaluation == null ||
-				stockMarket.Date - _LastReevaluation.Value >= TimeSpan.FromDays(_HoldDays)
+				lastReevaluation == null ||
+				stockMarket.Date - lastReevaluation.Value >= TimeSpan.FromDays(holdDays)
 			)
 			{
 				Reevaluate(stockMarket);
-				_LastReevaluation = stockMarket.Date;
+				lastReevaluation = stockMarket.Date;
 			}
 		}
 
@@ -55,7 +55,7 @@ namespace CrashAndBurn.Momentum.Strategy
 				{
 					performance = StockMarket.GetPerformance(currentPrice, position.OriginalPrice);
 				}
-				if (performance <= -_StopLossThreshold)
+				if (performance <= -stopLossThreshold)
 				{
 					stockMarket.Liquidate(position);
 				}
@@ -64,22 +64,22 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private void Reevaluate(StockMarket stockMarket)
 		{
-			int stocksToAcquire = 2 * _Stocks - stockMarket.Positions.Count;
+			int stocksToAcquire = 2 * this.stocks - stockMarket.Positions.Count;
 			if (stocksToAcquire == 0)
 			{
 				return;
 			}
 			var stocks = GetStocksByRating(stockMarket);
-			if (stocks.Count < 4 * _Stocks)
+			if (stocks.Count < 4 * this.stocks)
 			{
 				return;
 			}
 			decimal fundsPerPosition = (stockMarket.GetAvailableFunds() - stocksToAcquire * Constants.OrderFees) / stocksToAcquire;
-			fundsPerPosition = Math.Max(fundsPerPosition, _MinFundsPerPosition);
-			for (; stocksToAcquire > 0 && stockMarket.HasEnoughFunds(_MinFundsPerPosition); stocksToAcquire--)
+			fundsPerPosition = Math.Max(fundsPerPosition, MinFundsPerPosition);
+			for (; stocksToAcquire > 0 && stockMarket.HasEnoughFunds(MinFundsPerPosition); stocksToAcquire--)
 			{
 				int longPositions = stockMarket.Positions.Count(p => !p.IsShort);
-				bool goShort = longPositions >= _Stocks;
+				bool goShort = longPositions >= this.stocks;
 				var stock = GetAndRemoveStock(goShort, stocks);
 				decimal currentPrice = stock.GetPrice(stockMarket.Date);
 				int shares = (int)Math.Floor(fundsPerPosition / currentPrice);
@@ -115,8 +115,8 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private LinkedList<Stock> GetStocksByRating(StockMarket stockMarket)
 		{
-			DateTime from = stockMarket.Date - TimeSpan.FromDays(_HistoryDays);
-			DateTime to = stockMarket.Date - TimeSpan.FromDays(_IgnoreDays);
+			DateTime from = stockMarket.Date - TimeSpan.FromDays(historyDays);
+			DateTime to = stockMarket.Date - TimeSpan.FromDays(ignoreDays);
 			var filteredStocks = stockMarket.Stocks.Where(s => s.MaybeGetPrice(from).HasValue && s.MaybeGetPrice(to).HasValue && !stockMarket.Positions.Any(p => p.Stock == s));
 			var orderedStocks = filteredStocks.OrderBy(s => s.GetPrice(to) / s.GetPrice(from));
 			var stocks = new LinkedList<Stock>(orderedStocks);

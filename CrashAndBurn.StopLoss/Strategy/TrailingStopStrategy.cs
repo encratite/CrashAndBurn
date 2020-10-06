@@ -5,27 +5,27 @@ namespace CrashAndBurn.StopLoss.Strategy
 {
     class TrailingStopStrategy : BaseStrategy
     {
-        private const string _StrategyName = "Trailing stop";
+        private const string BaseStrategyName = "Trailing stop";
 
-        public override string StrategyName => _StrategyName;
+        public override string StrategyName => BaseStrategyName;
 
-        private decimal _TrailingStopPercentage;
-        private int? _RecoveryDays;
+        private decimal trailingStopPercentage;
+        private int? recoveryDays;
 
         protected decimal? MaximumPrice { get; set; }
         protected decimal? TrailingStop { get; set; }
         protected DateTime? RecoveryDate { get; set; }
 
         public TrailingStopStrategy(decimal trailingStopPercentage, int recoveryDays)
-            : this($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
+            : this($"{BaseStrategyName} ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
         {
         }
 
         public TrailingStopStrategy(string name, decimal trailingStopPercentage, int? recoveryDays)
             : base(name)
         {
-            _TrailingStopPercentage = trailingStopPercentage;
-            _RecoveryDays = recoveryDays;
+            this.trailingStopPercentage = trailingStopPercentage;
+            this.recoveryDays = recoveryDays;
         }
 
         public override void Buy(StockData stockData)
@@ -42,9 +42,9 @@ namespace CrashAndBurn.StopLoss.Strategy
             base.Sell(stockData, low);
             MaximumPrice = null;
             TrailingStop = null;
-            if (_RecoveryDays.HasValue)
+            if (recoveryDays.HasValue)
             {
-                RecoveryDate = stockData.Date.AddDays(_RecoveryDays.Value);
+                RecoveryDate = stockData.Date.AddDays(recoveryDays.Value);
             }
         }
 
@@ -67,7 +67,7 @@ namespace CrashAndBurn.StopLoss.Strategy
 
         protected void SetTrailingStop(decimal price)
         {
-            TrailingStop = (1.0m - _TrailingStopPercentage) * price;
+            TrailingStop = (1.0m - trailingStopPercentage) * price;
         }
     }
 }

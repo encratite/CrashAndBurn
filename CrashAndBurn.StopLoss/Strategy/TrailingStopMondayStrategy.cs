@@ -5,12 +5,12 @@ namespace CrashAndBurn.StopLoss.Strategy
 {
     class TrailingStopMondayStrategy : TrailingStopStrategy
     {
-        private const string _StrategyName = "Trailing stop, Monday anomaly";
+        private const string BaseStrategyName = "Trailing stop, Monday anomaly";
 
-        public override string StrategyName => _StrategyName;
+        public override string StrategyName => BaseStrategyName;
 
         public TrailingStopMondayStrategy(decimal trailingStopPercentage, int recoveryDays)
-            : base($"{_StrategyName} ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
+            : base($"{BaseStrategyName} ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days)", trailingStopPercentage, recoveryDays)
         {
         }
 

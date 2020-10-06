@@ -7,7 +7,7 @@ namespace CrashAndBurn.StopLoss
 		public string Name { get; private set; }
 		public decimal Cash { get; private set; }
 
-		private List<decimal> _Results = new List<decimal>();
+		private List<decimal> results = new List<decimal>();
 
 		public StrategyStats(string name)
 		{
@@ -16,22 +16,22 @@ namespace CrashAndBurn.StopLoss
 
 		public void Add(decimal result)
 		{
-			_Results.Add(result);
+			results.Add(result);
 			Cash = GetMedian();
 		}
 
 		private decimal GetMedian()
 		{
-			_Results.Sort();
+			results.Sort();
 			decimal median;
-			int offset = _Results.Count / 2;
-			if (_Results.Count % 2 != 0)
+			int offset = results.Count / 2;
+			if (results.Count % 2 != 0)
 			{
-				median = _Results[offset];
+				median = results[offset];
 			}
 			else
 			{
-				median = (_Results[offset - 1] + _Results[offset]) / 2.0m;
+				median = (results[offset - 1] + results[offset]) / 2.0m;
 			}
 			return median;
 		}

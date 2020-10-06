@@ -6,23 +6,23 @@ namespace CrashAndBurn.Common
 {
 	public class StockMarket
 	{
-		private HashSet<Stock> _Stocks = new HashSet<Stock>();
-		private List<Position> _Positions = new List<Position>();
+		private HashSet<Stock> stocks = new HashSet<Stock>();
+		private List<Position> positions = new List<Position>();
 
-		private decimal _Cash;
-		private decimal _OrderFees;
-		private decimal _CapitalGainsTax;
+		private decimal cash;
+		private decimal orderFees;
+		private decimal capitalGainsTax;
 
-		private decimal _InitialMargin;
-		private decimal _MaintenanceMargin;
-		private decimal _InitialMarginReserved;
+		private decimal initialMargin;
+		private decimal maintenanceMargin;
+		private decimal initialMarginReserved;
 
-		private bool _MarginCallSellAllPositions = true;
+		private bool marginCallSellAllPositions = true;
 
-		private decimal _Spread = 0.01m;
+		private decimal spread = 0.01m;
 
-		private decimal _Gains = 0;
-		private decimal _Losses = 0;
+		private decimal gains = 0;
+		private decimal losses = 0;
 
 		public static decimal GetPerformance(decimal now, decimal then)
 		{
@@ -31,12 +31,12 @@ namespace CrashAndBurn.Common
 
 		public IReadOnlyCollection<Stock> Stocks
 		{
-			get => _Stocks;
+			get => stocks;
 		}
 
 		public IReadOnlyCollection<Position> Positions
 		{
-			get => _Positions;
+			get => positions;
 		}
 
 		public DateTime Date { get; private set; }
@@ -47,19 +47,19 @@ namespace CrashAndBurn.Common
 		{
 			foreach (var stock in stocks)
 			{
-				_Stocks.Add(stock);
+				this.stocks.Add(stock);
 			}
 		}
 
 		public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, DateTime date)
 		{
-			_Cash = cash;
-			_OrderFees = orderFees;
-			_CapitalGainsTax = capitalGainsTax;
+			this.cash = cash;
+			this.orderFees = orderFees;
+			this.capitalGainsTax = capitalGainsTax;
 
-			_InitialMargin = initialMargin;
-			_MaintenanceMargin = maintenanceMargin;
-			_InitialMarginReserved = 0.0m;
+			this.initialMargin = initialMargin;
+			this.maintenanceMargin = maintenanceMargin;
+			initialMarginReserved = 0.0m;
 
 			MarginCallCount = 0;
 
@@ -80,25 +80,25 @@ namespace CrashAndBurn.Common
 			}
 			if (Date.Month != lastMonth)
 			{
-				decimal minimum = Math.Min(_Gains, _Losses);
-				decimal taxReturn = _CapitalGainsTax * minimum;
-				_Cash += taxReturn;
-				_Gains -= minimum;
-				_Losses -= minimum;
+				decimal minimum = Math.Min(gains, losses);
+				decimal taxReturn = capitalGainsTax * minimum;
+				cash += taxReturn;
+				gains -= minimum;
+				losses -= minimum;
 			}
 		}
 
 		public Position Buy(Stock stock, int count)
 		{
 			decimal pricePerShare = GetPricePerShare(stock);
-			decimal price = count * pricePerShare + _OrderFees;
+			decimal price = count * pricePerShare + orderFees;
 			if (HasEnoughFunds(price))
 			{
 				return null;
 			}
-			_Cash -= price;
+			cash -= price;
 			var position = new Position(stock, count, pricePerShare, false);
-			_Positions.Add(position);
+			positions.Add(position);
 			return position;
 		}
 
@@ -106,15 +106,15 @@ namespace CrashAndBurn.Common
 		{
 			decimal pricePerShare = GetPricePerShare(stock);
 			decimal initialMargin = GetInitialMargin(count, pricePerShare);
-			decimal cashRequired = initialMargin + _OrderFees;
+			decimal cashRequired = initialMargin + orderFees;
 			if (HasEnoughFunds(cashRequired))
 			{
 				return null;
 			}
-			_Cash -= _OrderFees;
-			_InitialMarginReserved += initialMargin;
+			cash -= orderFees;
+			initialMarginReserved += initialMargin;
 			var position = new Position(stock, count, pricePerShare, true);
-			_Positions.Add(position);
+			positions.Add(position);
 			return position;
 		}
 
@@ -126,22 +126,22 @@ namespace CrashAndBurn.Common
 			if (position.IsShort)
 			{
 				capitalGains = -capitalGains;
-				_Cash += capitalGains - _OrderFees;
+				cash += capitalGains - orderFees;
 				BookCapitalGains(capitalGains);
 				decimal initialMargin = GetInitialMargin(position.Count, position.OriginalPrice);
-				_InitialMargin -= initialMargin;
+				this.initialMargin -= initialMargin;
 			}
 			else
 			{
-				_Cash += position.Count * currentPrice - _OrderFees;
+				cash += position.Count * currentPrice - orderFees;
 				BookCapitalGains(capitalGains);
 			}
-			_Positions.Remove(position);
+			positions.Remove(position);
 		}
 
 		public void LiquidateAll()
 		{
-			foreach (var position in _Positions)
+			foreach (var position in positions)
 			{
 				Liquidate(position);
 			}
@@ -164,7 +164,7 @@ namespace CrashAndBurn.Common
 
 		public decimal GetAvailableFunds()
 		{
-			return _Cash - _InitialMarginReserved;
+			return cash - initialMarginReserved;
 		}
 
 		public bool HasEnoughFunds(decimal price)
@@ -175,7 +175,7 @@ namespace CrashAndBurn.Common
 
 		private decimal GetInitialMargin(int count, decimal pricePerShare)
 		{
-			decimal initialMargin = _InitialMargin * count * pricePerShare;
+			decimal initialMargin = this.initialMargin * count * pricePerShare;
 			return initialMargin;
 		}
 
@@ -183,26 +183,26 @@ namespace CrashAndBurn.Common
 		{
 			if (capitalGains > 0)
 			{
-				_Cash -= _CapitalGainsTax * capitalGains;
-				_Gains += capitalGains;
+				cash -= capitalGainsTax * capitalGains;
+				gains += capitalGains;
 			}
 			else
 			{
-				_Losses -= capitalGains;
+				losses -= capitalGains;
 			}
 		}
 
 		private decimal GetPricePerShare(Stock stock)
 		{
-			decimal pricePerStock = stock.GetPrice(Date) + _Spread;
+			decimal pricePerStock = stock.GetPrice(Date) + spread;
 			return pricePerStock;
 		}
 
 		private bool BelowMaintenanceMargin()
 		{
-			decimal equity = _Cash;
+			decimal equity = cash;
 			decimal shortMarketValue = 0.0m;
-			foreach (var position in _Positions)
+			foreach (var position in positions)
 			{
 				decimal currentPrice = position.Stock.GetPrice(Date);
 				decimal value = position.Count * currentPrice;
@@ -221,20 +221,20 @@ namespace CrashAndBurn.Common
 				return false;
 			}
 			decimal margin = equity / shortMarketValue;
-			return margin < _MaintenanceMargin;
+			return margin < maintenanceMargin;
 		}
 
 		private void MarginCall()
 		{
-			if (_MarginCallSellAllPositions)
+			if (marginCallSellAllPositions)
 			{
 				LiquidateAll();
 			}
 			else
 			{
-				while (BelowMaintenanceMargin() && _Positions.Any())
+				while (BelowMaintenanceMargin() && positions.Any())
 				{
-					var position = _Positions.First();
+					var position = positions.First();
 					Liquidate(position);
 				}
 			}

@@ -12,7 +12,7 @@ namespace CrashAndBurn.Common
 
 		public SortedDictionary<DateTime, StockData> History { get; private set; }
 
-		private StockData _Last;
+		private StockData last;
 
 		public static Stock FromFile(string path)
 		{
@@ -29,7 +29,7 @@ namespace CrashAndBurn.Common
 			foreach (var stockData in history)
 			{
 				History[stockData.Date] = stockData;
-				_Last = stockData;
+				last = stockData;
 			}
 		}
 
@@ -65,9 +65,9 @@ namespace CrashAndBurn.Common
 						return stockData.Open;
 					}
 				}
-				if (_Last.Date <= date)
+				if (last.Date <= date)
 				{
-					return _Last.Open;
+					return last.Open;
 				}
 			}
 			return null;
