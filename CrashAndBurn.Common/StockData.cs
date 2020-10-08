@@ -8,7 +8,7 @@ namespace CrashAndBurn.Common
 {
 	public struct StockData
 	{
-		public DateTime Date { get; private set; }
+		public DateTime Date { get; set; }
 		public decimal Open { get; private set; }
 		public decimal High { get; private set; }
 		public decimal Low { get; private set; }

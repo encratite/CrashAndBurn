@@ -129,7 +129,7 @@ namespace CrashAndBurn.Common
 				cash += capitalGains - orderFees;
 				BookCapitalGains(capitalGains);
 				decimal initialMargin = GetInitialMargin(position.Count, position.OriginalPrice);
-				this.initialMargin -= initialMargin;
+				initialMarginReserved -= initialMargin;
 			}
 			else
 			{
@@ -151,14 +151,7 @@ namespace CrashAndBurn.Common
 		{
 			var dateRange = new DateRange();
 			foreach (var stock in Stocks)
-			{
-				var history = stock.History;
-				if (history.Any())
-				{
-					dateRange.Process(history.First().Key);
-					dateRange.Process(history.Last().Key);
-				}
-			}
+				stock.UpdateDateRange(dateRange);
 			return dateRange;
 		}
 
