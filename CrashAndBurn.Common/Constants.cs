@@ -7,5 +7,6 @@
 		public const decimal CapitalGainsTax = 0.25m * 1.0505m;
 		public const decimal InitialMargin = 0.5m;
 		public const decimal MaintenanceMargin = 0.3m;
+		public const decimal StockLendingFee = 0.03m;
 	}
 }

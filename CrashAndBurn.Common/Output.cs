@@ -12,6 +12,11 @@ namespace CrashAndBurn.Common
 			});
 		}
 
+		public static void NewLine()
+		{
+			WriteLine(string.Empty);
+		}
+
 		public static void Write(string text, ConsoleColor? color = null)
 		{
 			WithColor(color, () =>

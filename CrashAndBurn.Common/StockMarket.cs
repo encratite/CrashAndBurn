@@ -11,6 +11,7 @@ namespace CrashAndBurn.Common
 
 		private decimal orderFees;
 		private decimal capitalGainsTax;
+		private decimal stockLendingFee;
 
 		private decimal initialMargin;
 		private decimal maintenanceMargin;
@@ -22,6 +23,8 @@ namespace CrashAndBurn.Common
 
 		private decimal gains = 0;
 		private decimal losses = 0;
+
+		private decimal outstandingStockLendingFees = 0.0m;
 
 		public static decimal GetPerformance(decimal now, decimal then)
 		{
@@ -50,10 +53,11 @@ namespace CrashAndBurn.Common
 			}
 		}
 
-		public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, DateTime date)
+		public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, decimal stockLendingFee, DateTime date)
 		{
 			this.orderFees = orderFees;
 			this.capitalGainsTax = capitalGainsTax;
+			this.stockLendingFee = stockLendingFee;
 
 			this.initialMargin = initialMargin;
 			this.maintenanceMargin = maintenanceMargin;
@@ -62,6 +66,11 @@ namespace CrashAndBurn.Common
 			Cash = cash;
 			Date = date;
 			MarginCallCount = 0;
+
+			gains = 0;
+			losses = 0;
+
+			outstandingStockLendingFees = 0;
 		}
 
 		public void NextDay()
@@ -69,21 +78,21 @@ namespace CrashAndBurn.Common
 			int lastMonth = Date.Month;
 			do
 			{
+				foreach (var position in positions)
+				{
+					if (position.IsShort)
+						outstandingStockLendingFees += stockLendingFee * position.Count * position.OriginalPrice / 365.0m;
+				}
 				Date = Date.AddDays(1);
 			}
 			while (Date.DayOfWeek == DayOfWeek.Saturday || Date.DayOfWeek == DayOfWeek.Sunday);
+			bool newMonth = Date.Month != lastMonth;
+			if (newMonth)
+				ProcessStockLendingFees();
 			if (BelowMaintenanceMargin())
-			{
 				MarginCall();
-			}
-			if (Date.Month != lastMonth)
-			{
-				decimal minimum = Math.Min(gains, losses);
-				decimal taxReturn = capitalGainsTax * minimum;
-				Cash += taxReturn;
-				gains -= minimum;
-				losses -= minimum;
-			}
+			if (newMonth)
+				ProcessTaxReturn();
 		}
 
 		public Position Buy(Stock stock, int count)
@@ -143,6 +152,13 @@ namespace CrashAndBurn.Common
 			{
 				Liquidate(position);
 			}
+		}
+
+		public void CashOut()
+		{
+			LiquidateAll();
+			ProcessTaxReturn();
+			ProcessStockLendingFees();
 		}
 
 		public DateRange GetDateRange()
@@ -230,6 +246,21 @@ namespace CrashAndBurn.Common
 				}
 			}
 			MarginCallCount++;
+		}
+
+		private void ProcessTaxReturn()
+		{
+			decimal minimum = Math.Min(gains, losses);
+			decimal taxReturn = capitalGainsTax * minimum;
+			Cash += taxReturn;
+			gains -= minimum;
+			losses -= minimum;
+		}
+
+		private void ProcessStockLendingFees()
+		{
+			Cash -= outstandingStockLendingFees;
+			outstandingStockLendingFees = 0.0m;
 		}
 	}
 }

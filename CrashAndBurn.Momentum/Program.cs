@@ -32,6 +32,7 @@ namespace CrashAndBurn.Momentum
 			var stockMarket = new StockMarket(stocks);
 			stopwatch.Reset();
 			Output.WriteLine("Evaluating strategies.");
+			Output.NewLine();
 			stopwatch.Start();
 			EvaluateStrategies(referenceIndex, stockMarket, null, null);
 			stopwatch.Stop();
@@ -48,23 +49,24 @@ namespace CrashAndBurn.Momentum
 			stopwatch.Start();
 			foreach (var strategy in strategies)
 			{
-				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, startDate);
+				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, Constants.StockLendingFee, startDate);
 				while (stockMarket.Date < endDate)
 				{
 					strategy.Trade(stockMarket);
 					stockMarket.NextDay();
 				}
-				stockMarket.LiquidateAll();
+				stockMarket.CashOut();
 				strategy.Cash = stockMarket.Cash;
 			}
 			PrintStrategyStats(startDate, endDate, referenceIndex, strategies);
 			stopwatch.Stop();
 			Output.WriteLine($"  Evaluated {strategies.Count} strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
+			Output.NewLine();
 		}
 
 		private static void PrintStrategyStats(DateTime startDate, DateTime endDate, Stock referenceIndex, List<BaseStrategy> strategies)
 		{
-			Output.WriteLine($"Strategies sorted by returns, starting with {Constants.InitialCash:C0} ({startDate.Year} - {endDate.Year}):");
+			Output.WriteLine($"Strategies sorted by performance, in comparison to index ETF (from {startDate.Year} to {endDate.Year}):", ConsoleColor.White);
 			decimal referenceCash = GetReferenceCash(startDate, endDate, referenceIndex);
 			strategies.Sort((x, y) => -x.Cash.Value.CompareTo(y.Cash.Value));
 			foreach (var strategy in strategies)
