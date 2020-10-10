@@ -23,18 +23,19 @@ namespace CrashAndBurn.Momentum
 			}
 			string referenceIndexPath = arguments[0];
 			string stockFolder = arguments[1];
+			var referenceIndex = Stock.FromFile(referenceIndexPath);
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
-			var referenceIndex = Stock.FromFile(referenceIndexPath);
 			var stocks = LoadStocks(stockFolder);
 			stopwatch.Stop();
 			Output.WriteLine($"Loaded {stocks.Count} stock(s) in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 			var stockMarket = new StockMarket(stocks);
 			stopwatch.Reset();
+			Output.WriteLine("Evaluating strategies.");
 			stopwatch.Start();
 			EvaluateStrategies(referenceIndex, stockMarket, null, null);
 			stopwatch.Stop();
-			Output.WriteLine($"Evaluated strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
+			Output.WriteLine($"Evaluated all strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 		}
 
 		private static void EvaluateStrategies(Stock referenceIndex, StockMarket stockMarket, int? firstYear, int? lastYear)
@@ -43,6 +44,8 @@ namespace CrashAndBurn.Momentum
 			DateTime startDate = GetStartEndDate(firstYear, false, dateRange);
 			DateTime endDate = GetStartEndDate(lastYear, true, dateRange);
 			var strategies = GetStrategies();
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
 			foreach (var strategy in strategies)
 			{
 				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, startDate);
@@ -52,7 +55,42 @@ namespace CrashAndBurn.Momentum
 					stockMarket.NextDay();
 				}
 				stockMarket.LiquidateAll();
+				strategy.Cash = stockMarket.Cash;
 			}
+			PrintStrategyStats(startDate, endDate, referenceIndex, strategies);
+			stopwatch.Stop();
+			Output.WriteLine($"  Evaluated {strategies.Count} strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
+		}
+
+		private static void PrintStrategyStats(DateTime startDate, DateTime endDate, Stock referenceIndex, List<BaseStrategy> strategies)
+		{
+			Output.WriteLine($"Strategies sorted by returns, starting with {Constants.InitialCash:C0} ({startDate.Year} - {endDate.Year}):");
+			decimal referenceCash = GetReferenceCash(startDate, endDate, referenceIndex);
+			strategies.Sort((x, y) => -x.Cash.Value.CompareTo(y.Cash.Value));
+			foreach (var strategy in strategies)
+			{
+				decimal performance = StockMarket.GetPerformance(strategy.Cash.Value, referenceCash);
+				Output.Write($"  {strategy.Name}: {strategy.Cash:C2}");
+				Output.WritePerformance(strategy.Cash.Value, referenceCash);
+			}
+		}
+
+		private static decimal GetReferenceCash(DateTime startDate, DateTime endDate, Stock referenceIndex)
+		{
+			decimal referencePerformance = GetReferenceIndexPerformance(startDate, endDate, referenceIndex);
+			decimal referenceOutperformance = referencePerformance - 1.0m;
+			if (referenceOutperformance > 0.0m)
+				referencePerformance -= Constants.CapitalGainsTax * referenceOutperformance;
+			decimal referenceCash = referencePerformance * Constants.InitialCash;
+			return referenceCash;
+		}
+
+		private static decimal GetReferenceIndexPerformance(DateTime startDate, DateTime endDate, Stock referenceIndex)
+		{
+			decimal startPrice = referenceIndex.GetPrice(startDate);
+			decimal endPrice = referenceIndex.GetPrice(endDate);
+			decimal performance = StockMarket.GetPerformance(endPrice, startPrice);
+			return performance;
 		}
 
 		private static List<BaseStrategy> GetStrategies()
@@ -73,7 +111,6 @@ namespace CrashAndBurn.Momentum
 					}
 				}
 			}
-			strategies.RemoveRange(1, strategies.Count - 1);
 			return strategies;
 		}
 
@@ -91,7 +128,7 @@ namespace CrashAndBurn.Momentum
 				startEndDate = GetYearDate(year.Value);
 				if (
 					(!isMax && startEndDate < minMaxDate) ||
-					(isMax && startEndDate > minMaxDate)
+					(isMax && startEndDate >= minMaxDate)
 				)
 				{
 					startEndDate = minMaxDate;

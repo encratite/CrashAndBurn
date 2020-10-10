@@ -90,7 +90,7 @@ namespace CrashAndBurn.StopLoss
 			foreach (var stats in strategyStats)
 			{
 				Output.Write($"  {stats.Name}: {stats.Cash:C2}");
-				WritePerformance(stats.Cash, referenceStrategy.Cash);
+				Output.WritePerformance(stats.Cash, referenceStrategy.Cash);
 			}
 			Output.WriteLine(string.Empty);
 		}
@@ -114,7 +114,7 @@ namespace CrashAndBurn.StopLoss
 				else
 				{
 					Output.Write($"  {strategy.Name}: {strategy.Cash:C2}");
-					WritePerformance(strategy.Cash, referenceStrategy.Cash);
+					Output.WritePerformance(strategy.Cash, referenceStrategy.Cash);
 				}
 			}
 			Output.WriteLine(string.Empty);
@@ -146,15 +146,6 @@ namespace CrashAndBurn.StopLoss
 			}
 
 			return strategies;
-		}
-
-		private static void WritePerformance(decimal cash, decimal referenceCash)
-		{
-			decimal performance = StockMarket.GetPerformance(cash, referenceCash);
-			var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
-			Output.Write(" (");
-			Output.Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
-			Output.WriteLine(")");
 		}
 	}
 }

@@ -20,6 +20,15 @@ namespace CrashAndBurn.Common
 			});
 		}
 
+		public static void WritePerformance(decimal cash, decimal referenceCash)
+		{
+			decimal performance = StockMarket.GetPerformance(cash, referenceCash);
+			var performanceColor = performance >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
+			Write(" (");
+			Write($"{performance:+0.##%;-0.##%;0%}", performanceColor);
+			WriteLine(")");
+		}
+
 		private static void WithColor(ConsoleColor? color, Action action)
 		{
 			if (color.HasValue)

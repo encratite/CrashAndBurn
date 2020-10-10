@@ -9,7 +9,6 @@ namespace CrashAndBurn.Common
 		private HashSet<Stock> stocks = new HashSet<Stock>();
 		private List<Position> positions = new List<Position>();
 
-		private decimal cash;
 		private decimal orderFees;
 		private decimal capitalGainsTax;
 
@@ -39,8 +38,8 @@ namespace CrashAndBurn.Common
 			get => positions;
 		}
 
+		public decimal Cash { get; private set; }
 		public DateTime Date { get; private set; }
-
 		public int MarginCallCount { get; private set; }
 
 		public StockMarket(IEnumerable<Stock> stocks)
@@ -53,7 +52,6 @@ namespace CrashAndBurn.Common
 
 		public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, DateTime date)
 		{
-			this.cash = cash;
 			this.orderFees = orderFees;
 			this.capitalGainsTax = capitalGainsTax;
 
@@ -61,9 +59,9 @@ namespace CrashAndBurn.Common
 			this.maintenanceMargin = maintenanceMargin;
 			initialMarginReserved = 0.0m;
 
-			MarginCallCount = 0;
-
+			Cash = cash;
 			Date = date;
+			MarginCallCount = 0;
 		}
 
 		public void NextDay()
@@ -82,7 +80,7 @@ namespace CrashAndBurn.Common
 			{
 				decimal minimum = Math.Min(gains, losses);
 				decimal taxReturn = capitalGainsTax * minimum;
-				cash += taxReturn;
+				Cash += taxReturn;
 				gains -= minimum;
 				losses -= minimum;
 			}
@@ -96,7 +94,7 @@ namespace CrashAndBurn.Common
 			{
 				return null;
 			}
-			cash -= price;
+			Cash -= price;
 			var position = new Position(stock, count, pricePerShare, false);
 			positions.Add(position);
 			return position;
@@ -111,7 +109,7 @@ namespace CrashAndBurn.Common
 			{
 				return null;
 			}
-			cash -= orderFees;
+			Cash -= orderFees;
 			initialMarginReserved += initialMargin;
 			var position = new Position(stock, count, pricePerShare, true);
 			positions.Add(position);
@@ -126,14 +124,14 @@ namespace CrashAndBurn.Common
 			if (position.IsShort)
 			{
 				capitalGains = -capitalGains;
-				cash += capitalGains - orderFees;
+				Cash += capitalGains - orderFees;
 				BookCapitalGains(capitalGains);
 				decimal initialMargin = GetInitialMargin(position.Count, position.OriginalPrice);
 				initialMarginReserved -= initialMargin;
 			}
 			else
 			{
-				cash += position.Count * currentPrice - orderFees;
+				Cash += position.Count * currentPrice - orderFees;
 				BookCapitalGains(capitalGains);
 			}
 			positions.Remove(position);
@@ -157,7 +155,7 @@ namespace CrashAndBurn.Common
 
 		public decimal GetAvailableFunds()
 		{
-			return cash - initialMarginReserved;
+			return Cash - initialMarginReserved;
 		}
 
 		public bool HasEnoughFunds(decimal price)
@@ -176,7 +174,7 @@ namespace CrashAndBurn.Common
 		{
 			if (capitalGains > 0)
 			{
-				cash -= capitalGainsTax * capitalGains;
+				Cash -= capitalGainsTax * capitalGains;
 				gains += capitalGains;
 			}
 			else
@@ -193,7 +191,7 @@ namespace CrashAndBurn.Common
 
 		private bool BelowMaintenanceMargin()
 		{
-			decimal equity = cash;
+			decimal equity = Cash;
 			decimal shortMarketValue = 0.0m;
 			foreach (var position in positions)
 			{
