@@ -1,10 +1,12 @@
 ﻿using CrashAndBurn.Common;
 using CrashAndBurn.Momentum.Strategy;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 
@@ -23,32 +25,67 @@ namespace CrashAndBurn.Momentum
 			}
 			string referenceIndexPath = arguments[0];
 			string stockFolder = arguments[1];
+			EvaluatePeriods(referenceIndexPath, stockFolder);
+		}
+
+		private static void EvaluatePeriods(string referenceIndexPath, string stockFolder)
+		{
 			var referenceIndex = Stock.FromFile(referenceIndexPath);
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 			var stocks = LoadStocks(stockFolder);
 			stopwatch.Stop();
 			Output.WriteLine($"Loaded {stocks.Count} stock(s) in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
-			var stockMarket = new StockMarket(stocks);
 			stopwatch.Reset();
 			Output.WriteLine("Evaluating strategies.");
 			Output.NewLine();
 			stopwatch.Start();
-			EvaluateStrategies(referenceIndex, stockMarket, null, null);
+			int firstYear = 1970;
+			const int windowSize = 20;
+			int periods = 0;
+			for (int year = firstYear; year <= DateTime.Now.Year - windowSize; year += 10)
+			{
+				EvaluateStrategies(referenceIndex, stocks, year, year + windowSize);
+				periods++;
+			}
+			for (int year = firstYear; year <= DateTime.Now.Year - 5; year += 10)
+			{
+				EvaluateStrategies(referenceIndex, stocks, year, year + windowSize);
+				periods++;
+			}
 			stopwatch.Stop();
-			Output.WriteLine($"Evaluated all strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
+			Output.WriteLine($"Evaluated all strategies over {periods} periods in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 		}
 
-		private static void EvaluateStrategies(Stock referenceIndex, StockMarket stockMarket, int? firstYear, int? lastYear)
+		private static void EvaluateStrategies(Stock referenceIndex, List<Stock> stocks, int? firstYear, int? lastYear)
 		{
-			var dateRange = stockMarket.GetDateRange();
+			var dateRange = GetDateRange(stocks);
 			DateTime startDate = GetStartEndDate(firstYear, false, dateRange);
 			DateTime endDate = GetStartEndDate(lastYear, true, dateRange);
 			var strategies = GetStrategies();
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
-			foreach (var strategy in strategies)
+			var strategyQueue = new ConcurrentQueue<BaseStrategy>(strategies);
+			var threads = new List<Thread>();
+			for (int i = 0; i < Environment.ProcessorCount; i++)
 			{
+				var thread = new Thread(() => ProcessStrategies(strategyQueue, stocks, startDate, endDate));
+				thread.Start();
+				threads.Add(thread);
+			}
+			foreach (var thread in threads)
+				thread.Join();
+			stopwatch.Stop();
+			PrintStrategyStats(startDate, endDate, referenceIndex, strategies);
+			Output.WriteLine($"  Evaluated {strategies.Count} strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
+			Output.NewLine();
+		}
+
+		private static void ProcessStrategies(ConcurrentQueue<BaseStrategy> strategyQueue, List<Stock> stocks, DateTime startDate, DateTime endDate)
+		{
+			while (strategyQueue.TryDequeue(out BaseStrategy strategy))
+			{
+				var stockMarket = new StockMarket(stocks);
 				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, Constants.StockLendingFee, startDate);
 				while (stockMarket.Date < endDate)
 				{
@@ -58,10 +95,14 @@ namespace CrashAndBurn.Momentum
 				stockMarket.CashOut();
 				strategy.Cash = stockMarket.Cash;
 			}
-			PrintStrategyStats(startDate, endDate, referenceIndex, strategies);
-			stopwatch.Stop();
-			Output.WriteLine($"  Evaluated {strategies.Count} strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
-			Output.NewLine();
+		}
+
+		private static DateRange GetDateRange(List<Stock> stocks)
+		{
+			var dateRange = new DateRange();
+			foreach (var stock in stocks)
+				stock.UpdateDateRange(dateRange);
+			return dateRange;
 		}
 
 		private static void PrintStrategyStats(DateTime startDate, DateTime endDate, Stock referenceIndex, List<BaseStrategy> strategies)
@@ -146,44 +187,29 @@ namespace CrashAndBurn.Momentum
 		private static List<Stock> LoadStocks(string stockFolder)
 		{
 			var stockPaths = Directory.GetFiles(stockFolder, "*.csv").ToList();
-			var stocks = new List<Stock>();
+			var stockPathQueue = new ConcurrentQueue<string>(stockPaths);
+			var stocks = new ConcurrentQueue<Stock>();
 			var threads = new List<Thread>();
 			for (int i = 0; i < Environment.ProcessorCount; i++)
 			{
 				var thread = new Thread(() =>
 				{
-					do
+					while (stockPathQueue.TryDequeue(out string stockPath))
 					{
-						string stockPath;
-						lock (stockPaths)
-						{
-							if (!stockPaths.Any())
-							{
-								break;
-							}
-							stockPath = stockPaths.First();
-							stockPaths.RemoveAt(0);
-						}
 						var stock = Stock.FromFile(stockPath);
-						lock (stocks)
-						{
-							stocks.Add(stock);
-						}
+						stocks.Enqueue(stock);
 					}
-					while (true);
 				});
 				thread.Start();
 				threads.Add(thread);
 			}
 			foreach (var thread in threads)
-			{
 				thread.Join();
-			}
+
 			if (!stocks.Any())
-			{
 				throw new ApplicationException("Failed to find any stocks.");
-			}
-			return stocks;
+			var output = stocks.ToList();
+			return output;
 		}
 	}
 }

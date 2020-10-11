@@ -161,14 +161,6 @@ namespace CrashAndBurn.Common
 			ProcessStockLendingFees();
 		}
 
-		public DateRange GetDateRange()
-		{
-			var dateRange = new DateRange();
-			foreach (var stock in Stocks)
-				stock.UpdateDateRange(dateRange);
-			return dateRange;
-		}
-
 		public decimal GetAvailableFunds()
 		{
 			return Cash - initialMarginReserved;
