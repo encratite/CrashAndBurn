@@ -10,7 +10,7 @@ namespace CrashAndBurn.Common
 		// Symbol or ISIN.
 		public string Id { get; private set; }
 
-		private StockData[] history;
+		private StockData[] _history;
 
 		public static Stock FromFile(string path)
 		{
@@ -44,7 +44,7 @@ namespace CrashAndBurn.Common
 				historyList.Add(stockData);
 				previousStockData = stockData;
 			}
-			this.history = historyList.ToArray();
+			_history = historyList.ToArray();
 		}
 
 		public override bool Equals(object obj)
@@ -70,13 +70,13 @@ namespace CrashAndBurn.Common
 
 		public decimal? MaybeGetPrice(DateTime date)
 		{
-			var firstStockData = history.First();
+			var firstStockData = _history.First();
 			if (date < firstStockData.Date)
 				return null;
 			var timeDifference = date - firstStockData.Date;
 			int timeDifferenceDays = (int)timeDifference.TotalDays;
-			int index = Math.Min(timeDifferenceDays, history.Length - 1);
-			var stockData = history[index];
+			int index = Math.Min(timeDifferenceDays, _history.Length - 1);
+			var stockData = _history[index];
 			return stockData.Open;
 		}
 
@@ -87,8 +87,8 @@ namespace CrashAndBurn.Common
 
 		public void UpdateDateRange(DateRange dateRange)
 		{
-			var first = history.First();
-			var last = history.Last();
+			var first = _history.First();
+			var last = _history.Last();
 			dateRange.Process(first.Date);
 			dateRange.Process(last.Date);
 		}

@@ -6,25 +6,25 @@ namespace CrashAndBurn.Common
 {
 	public class StockMarket
 	{
-		private HashSet<Stock> stocks = new HashSet<Stock>();
-		private List<Position> positions = new List<Position>();
+		private HashSet<Stock> _stocks = new HashSet<Stock>();
+		private List<Position> _positions = new List<Position>();
 
-		private decimal orderFees;
-		private decimal capitalGainsTax;
-		private decimal stockLendingFee;
+		private decimal _orderFees;
+		private decimal _capitalGainsTax;
+		private decimal _stockLendingFee;
 
-		private decimal initialMargin;
-		private decimal maintenanceMargin;
-		private decimal initialMarginReserved;
+		private decimal _initialMargin;
+		private decimal _maintenanceMargin;
+		private decimal _initialMarginReserved;
 
-		private bool marginCallSellAllPositions = true;
+		private bool _marginCallSellAllPositions = true;
 
-		private decimal spread = 0.01m;
+		private decimal _spread = 0.01m;
 
-		private decimal gains = 0;
-		private decimal losses = 0;
+		private decimal _gains = 0;
+		private decimal _losses = 0;
 
-		private decimal outstandingStockLendingFees = 0.0m;
+		private decimal _outstandingStockLendingFees = 0.0m;
 
 		public static decimal GetPerformance(decimal now, decimal then)
 		{
@@ -33,12 +33,12 @@ namespace CrashAndBurn.Common
 
 		public IReadOnlyCollection<Stock> Stocks
 		{
-			get => stocks;
+			get => _stocks;
 		}
 
 		public IReadOnlyCollection<Position> Positions
 		{
-			get => positions;
+			get => _positions;
 		}
 
 		public decimal Cash { get; private set; }
@@ -49,28 +49,28 @@ namespace CrashAndBurn.Common
 		{
 			foreach (var stock in stocks)
 			{
-				this.stocks.Add(stock);
+				_stocks.Add(stock);
 			}
 		}
 
 		public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, decimal stockLendingFee, DateTime date)
 		{
-			this.orderFees = orderFees;
-			this.capitalGainsTax = capitalGainsTax;
-			this.stockLendingFee = stockLendingFee;
+			_orderFees = orderFees;
+			_capitalGainsTax = capitalGainsTax;
+			_stockLendingFee = stockLendingFee;
 
-			this.initialMargin = initialMargin;
-			this.maintenanceMargin = maintenanceMargin;
-			initialMarginReserved = 0.0m;
+			_initialMargin = initialMargin;
+			_maintenanceMargin = maintenanceMargin;
+			_initialMarginReserved = 0.0m;
 
 			Cash = cash;
 			Date = date;
 			MarginCallCount = 0;
 
-			gains = 0;
-			losses = 0;
+			_gains = 0;
+			_losses = 0;
 
-			outstandingStockLendingFees = 0;
+			_outstandingStockLendingFees = 0;
 		}
 
 		public void NextDay()
@@ -78,10 +78,10 @@ namespace CrashAndBurn.Common
 			int lastMonth = Date.Month;
 			do
 			{
-				foreach (var position in positions)
+				foreach (var position in _positions)
 				{
 					if (position.IsShort)
-						outstandingStockLendingFees += stockLendingFee * position.Count * position.OriginalPrice / 365.0m;
+						_outstandingStockLendingFees += _stockLendingFee * position.Count * position.OriginalPrice / 365.0m;
 				}
 				Date = Date.AddDays(1);
 			}
@@ -98,14 +98,14 @@ namespace CrashAndBurn.Common
 		public Position Buy(Stock stock, int count)
 		{
 			decimal pricePerShare = GetPricePerShare(stock);
-			decimal price = count * pricePerShare + orderFees;
+			decimal price = count * pricePerShare + _orderFees;
 			if (!HasEnoughFunds(price))
 			{
 				return null;
 			}
 			Cash -= price;
 			var position = new Position(stock, count, pricePerShare, false);
-			positions.Add(position);
+			_positions.Add(position);
 			return position;
 		}
 
@@ -113,15 +113,15 @@ namespace CrashAndBurn.Common
 		{
 			decimal pricePerShare = GetPricePerShare(stock);
 			decimal initialMargin = GetInitialMargin(count, pricePerShare);
-			decimal cashRequired = initialMargin + orderFees;
+			decimal cashRequired = initialMargin + _orderFees;
 			if (!HasEnoughFunds(cashRequired))
 			{
 				return null;
 			}
-			Cash -= orderFees;
-			initialMarginReserved += initialMargin;
+			Cash -= _orderFees;
+			_initialMarginReserved += initialMargin;
 			var position = new Position(stock, count, pricePerShare, true);
-			positions.Add(position);
+			_positions.Add(position);
 			return position;
 		}
 
@@ -133,22 +133,22 @@ namespace CrashAndBurn.Common
 			if (position.IsShort)
 			{
 				capitalGains = -capitalGains;
-				Cash += capitalGains - orderFees;
+				Cash += capitalGains - _orderFees;
 				BookCapitalGains(capitalGains);
 				decimal initialMargin = GetInitialMargin(position.Count, position.OriginalPrice);
-				initialMarginReserved -= initialMargin;
+				_initialMarginReserved -= initialMargin;
 			}
 			else
 			{
-				Cash += position.Count * currentPrice - orderFees;
+				Cash += position.Count * currentPrice - _orderFees;
 				BookCapitalGains(capitalGains);
 			}
-			positions.Remove(position);
+			_positions.Remove(position);
 		}
 
 		public void LiquidateAll()
 		{
-			foreach (var position in positions.ToList())
+			foreach (var position in _positions.ToList())
 			{
 				Liquidate(position);
 			}
@@ -163,7 +163,7 @@ namespace CrashAndBurn.Common
 
 		public decimal GetAvailableFunds()
 		{
-			return Cash - initialMarginReserved;
+			return Cash - _initialMarginReserved;
 		}
 
 		public bool HasEnoughFunds(decimal price)
@@ -174,7 +174,7 @@ namespace CrashAndBurn.Common
 
 		private decimal GetInitialMargin(int count, decimal pricePerShare)
 		{
-			decimal initialMargin = this.initialMargin * count * pricePerShare;
+			decimal initialMargin = _initialMargin * count * pricePerShare;
 			return initialMargin;
 		}
 
@@ -182,18 +182,18 @@ namespace CrashAndBurn.Common
 		{
 			if (capitalGains > 0)
 			{
-				Cash -= capitalGainsTax * capitalGains;
-				gains += capitalGains;
+				Cash -= _capitalGainsTax * capitalGains;
+				_gains += capitalGains;
 			}
 			else
 			{
-				losses -= capitalGains;
+				_losses -= capitalGains;
 			}
 		}
 
 		private decimal GetPricePerShare(Stock stock)
 		{
-			decimal pricePerStock = stock.GetPrice(Date) + spread;
+			decimal pricePerStock = stock.GetPrice(Date) + _spread;
 			return pricePerStock;
 		}
 
@@ -201,7 +201,7 @@ namespace CrashAndBurn.Common
 		{
 			decimal equity = Cash;
 			decimal shortMarketValue = 0.0m;
-			foreach (var position in positions)
+			foreach (var position in _positions)
 			{
 				decimal currentPrice = position.Stock.GetPrice(Date);
 				decimal value = position.Count * currentPrice;
@@ -220,20 +220,20 @@ namespace CrashAndBurn.Common
 				return false;
 			}
 			decimal margin = equity / shortMarketValue;
-			return margin < maintenanceMargin;
+			return margin < _maintenanceMargin;
 		}
 
 		private void MarginCall()
 		{
-			if (marginCallSellAllPositions)
+			if (_marginCallSellAllPositions)
 			{
 				LiquidateAll();
 			}
 			else
 			{
-				while (BelowMaintenanceMargin() && positions.Any())
+				while (BelowMaintenanceMargin() && _positions.Any())
 				{
-					var position = positions.First();
+					var position = _positions.First();
 					Liquidate(position);
 				}
 			}
@@ -242,17 +242,17 @@ namespace CrashAndBurn.Common
 
 		private void ProcessTaxReturn()
 		{
-			decimal minimum = Math.Min(gains, losses);
-			decimal taxReturn = capitalGainsTax * minimum;
+			decimal minimum = Math.Min(_gains, _losses);
+			decimal taxReturn = _capitalGainsTax * minimum;
 			Cash += taxReturn;
-			gains -= minimum;
-			losses -= minimum;
+			_gains -= minimum;
+			_losses -= minimum;
 		}
 
 		private void ProcessStockLendingFees()
 		{
-			Cash -= outstandingStockLendingFees;
-			outstandingStockLendingFees = 0.0m;
+			Cash -= _outstandingStockLendingFees;
+			_outstandingStockLendingFees = 0.0m;
 		}
 	}
 }

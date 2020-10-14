@@ -9,8 +9,8 @@ namespace CrashAndBurn.StopLoss.Strategy
 
         public override string StrategyName => BaseStrategyName;
 
-        private decimal trailingStopPercentage;
-        private int? recoveryDays;
+        private decimal _trailingStopPercentage;
+        private int? _recoveryDays;
 
         protected decimal? MaximumPrice { get; set; }
         protected decimal? TrailingStop { get; set; }
@@ -24,8 +24,8 @@ namespace CrashAndBurn.StopLoss.Strategy
         public TrailingStopStrategy(string name, decimal trailingStopPercentage, int? recoveryDays)
             : base(name)
         {
-            this.trailingStopPercentage = trailingStopPercentage;
-            this.recoveryDays = recoveryDays;
+            _trailingStopPercentage = trailingStopPercentage;
+            _recoveryDays = recoveryDays;
         }
 
         public override void Buy(StockData stockData)
@@ -42,9 +42,9 @@ namespace CrashAndBurn.StopLoss.Strategy
             base.Sell(stockData, low);
             MaximumPrice = null;
             TrailingStop = null;
-            if (recoveryDays.HasValue)
+            if (_recoveryDays.HasValue)
             {
-                RecoveryDate = stockData.Date.AddDays(recoveryDays.Value);
+                RecoveryDate = stockData.Date.AddDays(_recoveryDays.Value);
             }
         }
 
@@ -67,7 +67,7 @@ namespace CrashAndBurn.StopLoss.Strategy
 
         protected void SetTrailingStop(decimal price)
         {
-            TrailingStop = (1.0m - trailingStopPercentage) * price;
+            TrailingStop = (1.0m - _trailingStopPercentage) * price;
         }
     }
 }

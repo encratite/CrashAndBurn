@@ -9,12 +9,12 @@ namespace CrashAndBurn.StopLoss.Strategy
 
         public override string StrategyName => BaseStrategyName;
 
-        private int offsetDays;
+        private int _offsetDays;
 
         public TrailingStopJanuaryStrategy(decimal trailingStopPercentage, int recoveryDays, int offsetDays)
             : base($"{BaseStrategyName} ({trailingStopPercentage:P1} pullback, {recoveryDays} recovery days, {offsetDays} offset days)", trailingStopPercentage, recoveryDays)
         {
-            this.offsetDays = offsetDays;
+            _offsetDays = offsetDays;
         }
 
         public override void ProcessStockData(StockData stockData)
@@ -26,7 +26,7 @@ namespace CrashAndBurn.StopLoss.Strategy
             }
             int targetYear = stockData.Date.Month > 6 ? stockData.Date.Year + 1 : stockData.Date.Year;
             var januaryDate = new DateTime(targetYear, 1, 1);
-            var targetDate = januaryDate.AddDays(offsetDays);
+            var targetDate = januaryDate.AddDays(_offsetDays);
             if (TrailingStop.HasValue && stockData.Low <= TrailingStop.Value)
             {
                 Sell(stockData, true);

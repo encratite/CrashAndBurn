@@ -9,22 +9,22 @@ namespace CrashAndBurn.Momentum.Strategy
 	{
 		private const decimal MinFundsPerPosition = 1000.0m;
 
-		private int stocks;
-		private decimal stopLossThreshold;
-		private int holdDays;
-		private int historyDays;
-		private int ignoreDays;
+		private int _stocks;
+		private decimal _stopLossThreshold;
+		private int _holdDays;
+		private int _historyDays;
+		private int _ignoreDays;
 
 		private DateTime? lastReevaluation = null;
 
 		public LongShortMomentumStrategy(int stocks, decimal stopLossThreshold, int holdDays, int historyDays, int ignoreDays)
 			: base($"Long-short momentum ({stocks} stocks, {stopLossThreshold:P0} stop-loss threshold, hold for {holdDays} days, {historyDays} days of history, ignore past {ignoreDays} days)")
 		{
-			this.stocks = stocks;
-			this.stopLossThreshold = stopLossThreshold;
-			this.holdDays = holdDays;
-			this.historyDays = historyDays;
-			this.ignoreDays = ignoreDays;
+			_stocks = stocks;
+			_stopLossThreshold = stopLossThreshold;
+			_holdDays = holdDays;
+			_historyDays = historyDays;
+			_ignoreDays = ignoreDays;
 		}
 
 		public override void Trade(StockMarket stockMarket)
@@ -33,7 +33,7 @@ namespace CrashAndBurn.Momentum.Strategy
 			if
 			(
 				lastReevaluation == null ||
-				stockMarket.Date - lastReevaluation.Value >= TimeSpan.FromDays(holdDays)
+				stockMarket.Date - lastReevaluation.Value >= TimeSpan.FromDays(_holdDays)
 			)
 			{
 				Reevaluate(stockMarket);
@@ -56,7 +56,7 @@ namespace CrashAndBurn.Momentum.Strategy
 				{
 					performance = StockMarket.GetPerformance(currentPrice, position.OriginalPrice);
 				}
-				if (performance <= -stopLossThreshold)
+				if (performance <= -_stopLossThreshold)
 				{
 					stockMarket.Liquidate(position);
 				}
@@ -65,13 +65,13 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private void Reevaluate(StockMarket stockMarket)
 		{
-			int stocksToAcquire = 2 * stocks - stockMarket.Positions.Count;
+			int stocksToAcquire = 2 * _stocks - stockMarket.Positions.Count;
 			if (stocksToAcquire == 0)
 			{
 				return;
 			}
 			var ratedStocks = GetStocksByRating(stockMarket);
-			if (ratedStocks.Count < 4 * stocks)
+			if (ratedStocks.Count < 4 * _stocks)
 			{
 				return;
 			}
@@ -81,7 +81,7 @@ namespace CrashAndBurn.Momentum.Strategy
 			for (; stocksToAcquire > 0 && stockMarket.HasEnoughFunds(MinFundsPerPosition); stocksToAcquire--)
 			{
 				int longPositions = stockMarket.Positions.Count(p => !p.IsShort);
-				bool goShort = longPositions >= stocks;
+				bool goShort = longPositions >= _stocks;
 				var stock = GetAndRemoveStock(goShort, ratedStocks);
 				decimal currentPrice = stock.GetPrice(stockMarket.Date);
 				int shares = (int)Math.Floor(fundsPerPosition / currentPrice);
@@ -117,8 +117,8 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private LinkedList<Stock> GetStocksByRating(StockMarket stockMarket)
 		{
-			DateTime from = stockMarket.Date - TimeSpan.FromDays(historyDays);
-			DateTime to = stockMarket.Date - TimeSpan.FromDays(ignoreDays);
+			DateTime from = stockMarket.Date - TimeSpan.FromDays(_historyDays);
+			DateTime to = stockMarket.Date - TimeSpan.FromDays(_ignoreDays);
 			var filteredStocks = stockMarket.Stocks.Where(s => s.MaybeGetPrice(from).HasValue && s.MaybeGetPrice(to).HasValue && !stockMarket.Positions.Any(p => p.Stock == s));
 			var orderedStocks = filteredStocks.OrderBy(s => s.GetPrice(to) / s.GetPrice(from));
 			var stocks = new LinkedList<Stock>(orderedStocks);

@@ -12,26 +12,26 @@ namespace CrashAndBurn.StopLoss.Strategy
 
         public override string StrategyName => BaseStrategyName;
 
-        private decimal volatilityPercentage;
+        private decimal _volatilityPercentage;
 
-        private List<StockData> stockDataBuffer = new List<StockData>();
+        private List<StockData> _stockDataBuffer = new List<StockData>();
 
         public TrailingStopVolatilityStrategy(decimal trailingStopPercentage, decimal volatilityPercentage)
             : base($"{BaseStrategyName} ({trailingStopPercentage:P1} pullback, {volatilityPercentage:P0} volatility)", trailingStopPercentage, null)
         {
-            this.volatilityPercentage = volatilityPercentage;
+            _volatilityPercentage = volatilityPercentage;
         }
 
         public override void Buy(StockData stockData)
         {
             base.Buy(stockData);
-            stockDataBuffer.Clear();
+            _stockDataBuffer.Clear();
         }
 
         public override void Sell(StockData stockData, bool low)
         {
             base.Sell(stockData, low);
-            stockDataBuffer.Clear();
+            _stockDataBuffer.Clear();
         }
 
         public override void ProcessStockData(StockData stockData)
@@ -51,23 +51,23 @@ namespace CrashAndBurn.StopLoss.Strategy
             }
             else if (!TrailingStop.HasValue)
             {
-                stockDataBuffer.Add(stockData);
-                if (stockDataBuffer.Count > StockDataBufferLimit)
+                _stockDataBuffer.Add(stockData);
+                if (_stockDataBuffer.Count > StockDataBufferLimit)
                 {
-                    stockDataBuffer.Remove(stockDataBuffer.First());
+                    _stockDataBuffer.Remove(_stockDataBuffer.First());
                 }
             }
         }
 
         private bool IsLowVolatility()
         {
-            if (stockDataBuffer.Count < StockDataBufferLimit)
+            if (_stockDataBuffer.Count < StockDataBufferLimit)
             {
                 return false;
             }
             decimal? low = null;
             decimal? high = null;
-            foreach (var stockData in stockDataBuffer)
+            foreach (var stockData in _stockDataBuffer)
             {
                 if (low.HasValue)
                 {
@@ -87,7 +87,7 @@ namespace CrashAndBurn.StopLoss.Strategy
                 }
             }
             decimal volatility = high.Value / low.Value - 1.0m;
-            bool isLowVolatility = volatility < volatilityPercentage;
+            bool isLowVolatility = volatility < _volatilityPercentage;
             return isLowVolatility;
         }
     }
