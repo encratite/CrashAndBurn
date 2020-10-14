@@ -147,8 +147,10 @@ namespace CrashAndBurn.Momentum
 						const int historyDays = 360;
 						for (int ignoreDays = 0; ignoreDays <= 60; ignoreDays += 30)
 						{
-							var strategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
-							strategies.Add(strategy);
+							var longShortStrategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
+							strategies.Add(longShortStrategy);
+							var longStrategy = new LongMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
+							strategies.Add(longStrategy);
 						}
 					}
 				}
