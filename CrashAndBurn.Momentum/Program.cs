@@ -39,19 +39,21 @@ namespace CrashAndBurn.Momentum
 			Output.WriteLine("Evaluating strategies.");
 			Output.NewLine();
 			stopwatch.Start();
-			int firstYear = 1970;
+			int firstYear = 1980;
 			const int windowSize = 20;
 			int periods = 0;
-			for (int year = firstYear; year <= DateTime.Now.Year - windowSize; year += 10)
+			for (int year = firstYear; year <= DateTime.Now.Year - windowSize; year += 2)
 			{
 				EvaluateStrategies(referenceIndex, stocks, year, year + windowSize);
 				periods++;
 			}
-			for (int year = firstYear; year <= DateTime.Now.Year - 5; year += 10)
+			/*
+			for (int year = firstYear; year <= DateTime.Now.Year - 5; year += 5)
 			{
 				EvaluateStrategies(referenceIndex, stocks, year, year + windowSize);
 				periods++;
 			}
+			*/
 			stopwatch.Stop();
 			Output.WriteLine($"Evaluated all strategies over {periods} periods in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 		}
@@ -61,7 +63,7 @@ namespace CrashAndBurn.Momentum
 			var dateRange = GetDateRange(stocks);
 			DateTime startDate = GetStartEndDate(firstYear, false, dateRange);
 			DateTime endDate = GetStartEndDate(lastYear, true, dateRange);
-			var strategies = GetStrategies();
+			var strategies = GetStrategies(out List<StrategyClass> strategyClasses);
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 			var strategyQueue = new ConcurrentQueue<BaseStrategy>(strategies);
@@ -75,7 +77,8 @@ namespace CrashAndBurn.Momentum
 			foreach (var thread in threads)
 				thread.Join();
 			stopwatch.Stop();
-			PrintStrategyStats(startDate, endDate, referenceIndex, strategies);
+			PrintStrategyStats(startDate, endDate, referenceIndex, strategies, strategyClasses);
+			Output.NewLine();
 			Output.WriteLine($"  Evaluated {strategies.Count} strategies in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 			Output.NewLine();
 		}
@@ -93,6 +96,7 @@ namespace CrashAndBurn.Momentum
 				}
 				stockMarket.CashOut();
 				strategy.Cash = stockMarket.Cash;
+				strategy.MarginCallCount = stockMarket.MarginCallCount;
 			}
 		}
 
@@ -104,7 +108,7 @@ namespace CrashAndBurn.Momentum
 			return dateRange;
 		}
 
-		private static void PrintStrategyStats(DateTime startDate, DateTime endDate, Stock referenceIndex, List<BaseStrategy> strategies)
+		private static void PrintStrategyStats(DateTime startDate, DateTime endDate, Stock referenceIndex, List<BaseStrategy> strategies, List<StrategyClass> strategyClasses)
 		{
 			Output.WriteLine($"Strategies sorted by performance, in comparison to index ETF (from {startDate.Year} to {endDate.Year}):", ConsoleColor.White);
 			decimal referenceCash = GetReferenceCash(startDate, endDate, referenceIndex);
@@ -113,7 +117,24 @@ namespace CrashAndBurn.Momentum
 			{
 				decimal performance = StockMarket.GetPerformance(strategy.Cash.Value, referenceCash);
 				Output.Write($"  {strategy.Name}: {strategy.Cash:C2}");
+				if (strategy.MarginCallCount > 0)
+				{
+					Output.Write(" (");
+					Output.Write(strategy.MarginCallCount.ToString(), ConsoleColor.Red);
+					Output.Write(" margin call(s))");
+				}
 				Output.WritePerformance(strategy.Cash.Value, referenceCash);
+			}
+
+			foreach (var strategyClass in strategyClasses)
+			{
+				Output.NewLine();
+				Output.WriteLine($"  {strategyClass.Name}:");
+				foreach (var parameterPair in strategyClass)
+				{
+					Output.Write($"    {parameterPair.Parameter}: {parameterPair.Cash:C2}");
+					Output.WritePerformance(parameterPair.Cash, referenceCash);
+				}
 			}
 		}
 
@@ -135,10 +156,19 @@ namespace CrashAndBurn.Momentum
 			return performance;
 		}
 
-		private static List<BaseStrategy> GetStrategies()
+		private static List<BaseStrategy> GetStrategies(out List<StrategyClass> strategyClasses)
 		{
 			var strategies = new List<BaseStrategy>();
-			for (int stocks = 3; stocks <= 5; stocks++)
+			var longMomentumStopLossThresholdClass = new StrategyClass("Long momentum, stop-loss threshold");
+			var longMomentumHoldDaysClass = new StrategyClass("Long momentum, hold days");
+			var longMomentumIgnoreDays = new StrategyClass("Long momentum, ignore days");
+			strategyClasses = new List<StrategyClass>
+			{
+				longMomentumStopLossThresholdClass,
+				longMomentumHoldDaysClass,
+				longMomentumIgnoreDays
+			};
+			for (int stocks = 5; stocks <= 10; stocks += 5)
 			{
 				for (decimal stopLossThreshold = 0.05m; stopLossThreshold <= 0.15m; stopLossThreshold += 0.05m)
 				{
@@ -151,6 +181,9 @@ namespace CrashAndBurn.Momentum
 							strategies.Add(longShortStrategy);
 							var longStrategy = new LongMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
 							strategies.Add(longStrategy);
+							longMomentumStopLossThresholdClass.Add($"{stopLossThreshold:P0}", longStrategy);
+							longMomentumHoldDaysClass.Add($"{holdDays} days", longStrategy);
+							longMomentumIgnoreDays.Add($"{ignoreDays} days", longStrategy);
 						}
 					}
 				}
