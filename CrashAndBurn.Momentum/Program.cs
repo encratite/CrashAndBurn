@@ -39,21 +39,21 @@ namespace CrashAndBurn.Momentum
 			Output.WriteLine("Evaluating strategies.");
 			Output.NewLine();
 			stopwatch.Start();
-			int firstYear = 1980;
-			const int windowSize = 20;
+			int firstYear = 1970;
+			const int windowSize = 10;
 			int periods = 0;
+			/*
 			for (int year = firstYear; year <= DateTime.Now.Year - windowSize; year += 2)
 			{
 				EvaluateStrategies(referenceIndex, stocks, year, year + windowSize);
 				periods++;
 			}
-			/*
+			*/
 			for (int year = firstYear; year <= DateTime.Now.Year - 5; year += 5)
 			{
-				EvaluateStrategies(referenceIndex, stocks, year, year + windowSize);
+				EvaluateStrategies(referenceIndex, stocks, year, DateTime.Now.Year);
 				periods++;
 			}
-			*/
 			stopwatch.Stop();
 			Output.WriteLine($"Evaluated all strategies over {periods} periods in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 		}
@@ -112,6 +112,8 @@ namespace CrashAndBurn.Momentum
 		{
 			Output.WriteLine($"Strategies sorted by performance, in comparison to index ETF (from {startDate.Year} to {endDate.Year}):", ConsoleColor.White);
 			decimal referenceCash = GetReferenceCash(startDate, endDate, referenceIndex);
+
+			/*
 			strategies.Sort((x, y) => -x.Cash.Value.CompareTo(y.Cash.Value));
 			foreach (var strategy in strategies)
 			{
@@ -125,6 +127,7 @@ namespace CrashAndBurn.Momentum
 				}
 				Output.WritePerformance(strategy.Cash.Value, referenceCash);
 			}
+			*/
 
 			foreach (var strategyClass in strategyClasses)
 			{
@@ -152,36 +155,45 @@ namespace CrashAndBurn.Momentum
 		{
 			decimal startPrice = referenceIndex.GetPrice(startDate);
 			decimal endPrice = referenceIndex.GetPrice(endDate);
-			decimal performance = StockMarket.GetPerformance(endPrice, startPrice);
+			decimal performance = endPrice / startPrice;
 			return performance;
 		}
 
 		private static List<BaseStrategy> GetStrategies(out List<StrategyClass> strategyClasses)
 		{
 			var strategies = new List<BaseStrategy>();
+			var strategyClass = new StrategyClass("Strategy");
 			var longMomentumStopLossThresholdClass = new StrategyClass("Long momentum, stop-loss threshold");
+			var stocksClass = new StrategyClass("Long momentum, stocks");
 			var longMomentumHoldDaysClass = new StrategyClass("Long momentum, hold days");
 			var longMomentumIgnoreDays = new StrategyClass("Long momentum, ignore days");
 			strategyClasses = new List<StrategyClass>
 			{
+				// strategyClass,
 				longMomentumStopLossThresholdClass,
+				stocksClass,
 				longMomentumHoldDaysClass,
 				longMomentumIgnoreDays
 			};
-			for (int stocks = 5; stocks <= 10; stocks += 5)
+			for (int stocks = 4; stocks <= 8; stocks += 2)
 			{
-				for (decimal stopLossThreshold = 0.05m; stopLossThreshold <= 0.15m; stopLossThreshold += 0.05m)
+				for (decimal stopLossThreshold = 0.06m; stopLossThreshold <= 0.12m; stopLossThreshold += 0.02m)
 				{
 					for (int holdDays = 15; holdDays <= 60; holdDays *= 2)
 					{
 						const int historyDays = 360;
 						for (int ignoreDays = 0; ignoreDays <= 60; ignoreDays += 30)
 						{
+							/*
 							var longShortStrategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
 							strategies.Add(longShortStrategy);
+							strategyClass.Add("Long-short momentum", longShortStrategy);
+							*/
 							var longStrategy = new LongMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
 							strategies.Add(longStrategy);
+							strategyClass.Add("Long momentum", longStrategy);
 							longMomentumStopLossThresholdClass.Add($"{stopLossThreshold:P0}", longStrategy);
+							stocksClass.Add($"{stocks} stocks", longStrategy);
 							longMomentumHoldDaysClass.Add($"{holdDays} days", longStrategy);
 							longMomentumIgnoreDays.Add($"{ignoreDays} days", longStrategy);
 						}
