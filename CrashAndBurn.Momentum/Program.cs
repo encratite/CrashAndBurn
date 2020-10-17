@@ -169,7 +169,7 @@ namespace CrashAndBurn.Momentum
 			var longMomentumIgnoreDays = new StrategyClass("Long momentum, ignore days");
 			strategyClasses = new List<StrategyClass>
 			{
-				// strategyClass,
+				strategyClass,
 				longMomentumStopLossThresholdClass,
 				stocksClass,
 				longMomentumHoldDaysClass,
@@ -184,18 +184,21 @@ namespace CrashAndBurn.Momentum
 						const int historyDays = 360;
 						for (int ignoreDays = 0; ignoreDays <= 60; ignoreDays += 30)
 						{
-							/*
-							var longShortStrategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
+							var longShortStrategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays, LongShortMode.LongShort);
 							strategies.Add(longShortStrategy);
 							strategyClass.Add("Long-short momentum", longShortStrategy);
-							*/
-							var longStrategy = new LongMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays);
+
+							var longStrategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays, LongShortMode.LongOnly);
 							strategies.Add(longStrategy);
 							strategyClass.Add("Long momentum", longStrategy);
 							longMomentumStopLossThresholdClass.Add($"{stopLossThreshold:P0}", longStrategy);
 							stocksClass.Add($"{stocks} stocks", longStrategy);
 							longMomentumHoldDaysClass.Add($"{holdDays} days", longStrategy);
 							longMomentumIgnoreDays.Add($"{ignoreDays} days", longStrategy);
+
+							var shortStrategy = new LongShortMomentumStrategy(stocks, stopLossThreshold, holdDays, historyDays, ignoreDays, LongShortMode.ShortOnly);
+							strategies.Add(shortStrategy);
+							strategyClass.Add("Short momentum", shortStrategy);
 						}
 					}
 				}

@@ -5,6 +5,13 @@ using System.Linq;
 
 namespace CrashAndBurn.Momentum.Strategy
 {
+	enum LongShortMode
+	{
+		LongShort,
+		ShortOnly,
+		LongOnly
+	}
+
 	class LongShortMomentumStrategy : BaseStrategy
 	{
 		private const decimal MinFundsPerPosition = 1000.0m;
@@ -14,19 +21,33 @@ namespace CrashAndBurn.Momentum.Strategy
 		private int _holdDays;
 		private int _historyDays;
 		private int _ignoreDays;
-		private bool _enableShortSelling;
+		private LongShortMode _mode;
 
 		private DateTime? _lastReevaluation = null;
 
-		public LongShortMomentumStrategy(int stocks, decimal stopLossThreshold, int holdDays, int historyDays, int ignoreDays, bool enableShortSelling = true)
-			: base($"{(enableShortSelling ? "Long-short" : "Long")} momentum ({stocks} stocks, {stopLossThreshold:P0} stop-loss threshold, hold for {holdDays} days, {historyDays} days of history, ignore past {ignoreDays} days)")
+		private static string GetDescription(LongShortMode mode)
+		{
+			switch (mode)
+			{
+				case LongShortMode.LongShort:
+					return "Long-short";
+				case LongShortMode.LongOnly:
+					return "Long";
+				case LongShortMode.ShortOnly:
+					return "Short";
+			}
+			throw new ApplicationException("Invalid mode.");
+		}
+
+		public LongShortMomentumStrategy(int stocks, decimal stopLossThreshold, int holdDays, int historyDays, int ignoreDays, LongShortMode mode)
+			: base($"{GetDescription(mode)} momentum ({stocks} stocks, {stopLossThreshold:P0} stop-loss threshold, hold for {holdDays} days, {historyDays} days of history, ignore past {ignoreDays} days)")
 		{
 			_stocks = stocks;
 			_stopLossThreshold = stopLossThreshold;
 			_holdDays = holdDays;
 			_historyDays = historyDays;
 			_ignoreDays = ignoreDays;
-			_enableShortSelling = enableShortSelling;
+			_mode = mode;
 		}
 
 		public override void Trade(StockMarket stockMarket)
@@ -67,7 +88,7 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private void Reevaluate(StockMarket stockMarket)
 		{
-			int stocksToAcquire = (_enableShortSelling ? 2 * _stocks : _stocks) - stockMarket.Positions.Count;
+			int stocksToAcquire = (_mode == LongShortMode.LongShort ? 2 * _stocks : _stocks) - stockMarket.Positions.Count;
 			if (stocksToAcquire == 0)
 			{
 				return;
@@ -83,7 +104,9 @@ namespace CrashAndBurn.Momentum.Strategy
 			for (; stocksToAcquire > 0 && stockMarket.HasEnoughFunds(MinFundsPerPosition); stocksToAcquire--)
 			{
 				int longPositions = stockMarket.Positions.Count(p => !p.IsShort);
-				bool goShort = _enableShortSelling && longPositions >= _stocks;
+				bool goShort =
+					(_mode == LongShortMode.LongShort && longPositions >= _stocks) ||
+					_mode == LongShortMode.ShortOnly;
 				var stock = GetAndRemoveStock(goShort, ratedStocks);
 				decimal currentPrice = stock.GetPrice(stockMarket.Date);
 				int shares = (int)Math.Floor(fundsPerPosition / currentPrice);
