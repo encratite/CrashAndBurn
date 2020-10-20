@@ -63,39 +63,67 @@ namespace CrashAndBurn.HistoryDownloader
 		{
 			string yahooUrl = $"https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1=0&period2=2000000000&interval=1d&events=history";
 			string outputPath = Path.Combine(outputDirectory, $"{symbol}.csv");
-			webClient.DownloadFile(yahooUrl, outputPath);
+			if (ShouldDownloadFile(outputPath))
+			{
+				webClient.DownloadFile(yahooUrl, outputPath);
+				WriteDownloadMessage(counter, symbolCount, outputPath);
+			}
+			else
+			{
+				WriteSkipMessage(counter, symbolCount, outputPath);
+			}
+		}
+
+		private static void WriteDownloadMessage(int counter, int symbolCount, string outputPath)
+		{
 			Output.WriteLine($"Downloaded {outputPath} ({counter}/{symbolCount})");
+		}
+
+		private static void WriteSkipMessage(int counter, int symbolCount, string outputPath)
+		{
+			Output.WriteLine($"Skipping {outputPath} ({counter}/{symbolCount})");
 		}
 
 		private static void DownloadDividends(string symbol, int counter, int symbolCount, string outputDirectory, IBrowsingContext browsingContext, WebClient webClient)
 		{
-			string url = $"https://www.nasdaq.com/market-activity/stocks/{symbol.ToLower()}/dividend-history";
-			string html = webClient.DownloadString(url);
-			var document = browsingContext.OpenAsync(request => request.Content(html)).Result;
-			var nodes = document.QuerySelectorAll(".dividend-history__row--data");
-			var amountPattern = new Regex(@"\d+\.\d+");
-			var dividends = new List<DividendData>();
-			foreach (var node in nodes)
-			{
-				var amountNode = node.QuerySelector(".dividend-history__cell--amount");
-				if (amountNode == null)
-					continue;
-				var recordDateNode = node.QuerySelector(".dividend-history__cell--recordDate");
-				if (recordDateNode == null)
-					continue;
-				var match = amountPattern.Match(amountNode.TextContent);
-				if (!match.Success)
-					continue;
-				decimal amount = decimal.Parse(match.ToString());
-				if (!DateTime.TryParse(recordDateNode.TextContent, out DateTime recordDate))
-					continue;
-				var dividendData = new DividendData(recordDate, amount);
-				dividends.Add(dividendData);
-			}
 			string outputPath = Path.Combine(outputDirectory, $"{symbol}.json");
-			DividendData.Write(outputPath, dividends);
-			Output.WriteLine($"Downloaded {outputPath} ({counter}/{symbolCount})");
+			if (ShouldDownloadFile(outputPath))
+			{
+				string url = $"https://dividata.com/stock/{symbol}/dividend";
+				string html = webClient.DownloadString(url);
+				var document = browsingContext.OpenAsync(request => request.Content(html)).Result;
+				var nodes = document.QuerySelectorAll("table.table tr");
+				var amountPattern = new Regex(@"\d+\.\d+");
+				var dividends = new List<DividendData>();
+				foreach (var node in nodes)
+				{
+					var dateNode = node.QuerySelector("td.date");
+					if (dateNode == null)
+						continue;
+					if (!DateTime.TryParse(dateNode.TextContent, out DateTime date))
+						continue;
+					var amountNode = node.QuerySelector("td.money");
+					if (amountNode == null)
+						continue;
+					var match = amountPattern.Match(amountNode.TextContent);
+					if (!match.Success)
+						continue;
+					decimal amount = decimal.Parse(match.ToString());
+					var dividendData = new DividendData(date, amount);
+					dividends.Add(dividendData);
+				}
+				DividendData.Write(outputPath, dividends);
+				WriteDownloadMessage(counter, symbolCount, outputPath);
+			}
+			else
+			{
+				WriteSkipMessage(counter, symbolCount, outputPath);
+			}
+		}
 
+		private static bool ShouldDownloadFile(string path)
+		{
+			return !File.Exists(path) || DateTime.UtcNow - File.GetLastWriteTimeUtc(path) > TimeSpan.FromDays(1);
 		}
 	}
 }

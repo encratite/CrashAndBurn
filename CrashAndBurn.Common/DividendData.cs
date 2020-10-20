@@ -2,13 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace CrashAndBurn.Common
 {
 	public class DividendData
 	{
-		public DateTime RecordDate { get; set; }
+		public DateTime Date { get; set; }
 		public decimal Amount { get; set; }
 
 		public static IEnumerable<DividendData> Read(string path)
@@ -18,9 +17,9 @@ namespace CrashAndBurn.Common
 			return dividends;
 		}
 
-		public static void Write(string path, IEnumerable<DividendData> dividends)
+		public static void Write(string path, List<DividendData> dividends)
 		{
-			string json = JsonConvert.SerializeObject(dividends.ToArray());
+			string json = JsonConvert.SerializeObject(dividends);
 			File.WriteAllText(path, json);
 		}
 
@@ -28,9 +27,9 @@ namespace CrashAndBurn.Common
 		{
 		}
 
-		public DividendData(DateTime recordDate, decimal amount)
+		public DividendData(DateTime date, decimal amount)
 		{
-			RecordDate = recordDate;
+			Date = date;
 			Amount = amount;
 		}
 	}
