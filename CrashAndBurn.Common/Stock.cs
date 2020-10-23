@@ -7,44 +7,31 @@ namespace CrashAndBurn.Common
 {
 	public class Stock
 	{
+		private StockData[] _history;
+
 		// Symbol or ISIN.
 		public string Id { get; private set; }
 
-		private StockData[] _history;
+		public SortedDictionary<DateTime, decimal> Dividends { get; private set; } = new SortedDictionary<DateTime, decimal>();
 
 		public static Stock FromFile(string path)
 		{
 			string id = Path.GetFileNameWithoutExtension(path);
 			var stockData = StockData.FromFile(path);
-			var stock = new Stock(id, stockData);
+			string jsonPath = Path.Combine(Path.GetDirectoryName(path), $"{id}.json");
+			var dividends = new List<DividendData>();
+			if (File.Exists(jsonPath))
+				dividends = DividendData.Read(jsonPath);
+			var stock = new Stock(id, stockData, dividends);
 			return stock;
 		}
 
-		public Stock(string id, IEnumerable<StockData> history)
+		public Stock(string id, IEnumerable<StockData> history, IEnumerable<DividendData> dividends)
 		{
 			Id = id;
-			if (!history.Any())
-				throw new ApplicationException("No data in stock history.");
-			var firstStockData = history.First();
-			var historyList = new List<StockData>
-			{
-				firstStockData
-			};
-			var previousStockData = firstStockData;
-			foreach (var stockData in history.Skip(1))
-			{
-				var timeDifference = stockData.Date - previousStockData.Date;
-				int timeDifferenceDays = (int)timeDifference.TotalDays;
-				for (int i = 1; i < timeDifferenceDays; i++)
-				{
-					var gapStockdata = previousStockData;
-					gapStockdata.Date = previousStockData.Date + TimeSpan.FromDays(i);
-					historyList.Add(gapStockdata);
-				}
-				historyList.Add(stockData);
-				previousStockData = stockData;
-			}
-			_history = historyList.ToArray();
+			_history = GetHistory(history);
+			foreach (var dividendData in dividends)
+				Dividends.Add(dividendData.Date, dividendData.Amount);
 		}
 
 		public override bool Equals(object obj)
@@ -91,6 +78,33 @@ namespace CrashAndBurn.Common
 			var last = _history.Last();
 			dateRange.Process(first.Date);
 			dateRange.Process(last.Date);
+		}
+
+		private StockData[] GetHistory(IEnumerable<StockData> history)
+		{
+			if (!history.Any())
+				throw new ApplicationException("No data in stock history.");
+			var firstStockData = history.First();
+			var historyList = new List<StockData>
+			{
+				firstStockData
+			};
+			var previousStockData = firstStockData;
+			foreach (var stockData in history.Skip(1))
+			{
+				var timeDifference = stockData.Date - previousStockData.Date;
+				int timeDifferenceDays = (int)timeDifference.TotalDays;
+				for (int i = 1; i < timeDifferenceDays; i++)
+				{
+					var gapStockdata = previousStockData;
+					gapStockdata.Date = previousStockData.Date + TimeSpan.FromDays(i);
+					historyList.Add(gapStockdata);
+				}
+				historyList.Add(stockData);
+				previousStockData = stockData;
+			}
+
+			return historyList.ToArray();
 		}
 	}
 }

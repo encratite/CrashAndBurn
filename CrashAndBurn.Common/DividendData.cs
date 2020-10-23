@@ -10,10 +10,10 @@ namespace CrashAndBurn.Common
 		public DateTime Date { get; set; }
 		public decimal Amount { get; set; }
 
-		public static IEnumerable<DividendData> Read(string path)
+		public static List<DividendData> Read(string path)
 		{
 			string json = File.ReadAllText(path);
-			var dividends = JsonConvert.DeserializeObject<DividendData[]>(json);
+			var dividends = JsonConvert.DeserializeObject<List<DividendData>>(json);
 			return dividends;
 		}
 

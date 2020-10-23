@@ -7,6 +7,7 @@ namespace CrashAndBurn.Common
 	public class StockMarket
 	{
 		private HashSet<Stock> _stocks = new HashSet<Stock>();
+		private SortedDictionary<DateTime, List<Stock>> _dividends = new SortedDictionary<DateTime, List<Stock>>();
 		private List<Position> _positions = new List<Position>();
 
 		private decimal _orderFees;
@@ -50,6 +51,7 @@ namespace CrashAndBurn.Common
 			foreach (var stock in stocks)
 			{
 				_stocks.Add(stock);
+				AddDividends(stock);
 			}
 		}
 
@@ -84,6 +86,7 @@ namespace CrashAndBurn.Common
 						_outstandingStockLendingFees += _stockLendingFee * position.Count * position.OriginalPrice / 365.0m;
 				}
 				Date = Date.AddDays(1);
+				ProcessDividends(Date);
 			}
 			while (Date.DayOfWeek == DayOfWeek.Saturday || Date.DayOfWeek == DayOfWeek.Sunday);
 			bool newMonth = Date.Month != lastMonth;
@@ -253,6 +256,41 @@ namespace CrashAndBurn.Common
 		{
 			Cash -= _outstandingStockLendingFees;
 			_outstandingStockLendingFees = 0.0m;
+		}
+
+		private void AddDividends(Stock stock)
+		{
+			foreach (var pair in stock.Dividends)
+			{
+				List<Stock> dividendStocks;
+				if (!_dividends.TryGetValue(pair.Key, out dividendStocks))
+				{
+					dividendStocks = new List<Stock>
+					{
+						stock
+					};
+					_dividends.Add(pair.Key, dividendStocks);
+				}
+				else
+				{
+					dividendStocks.Add(stock);
+				}
+			}
+		}
+
+		private void ProcessDividends(DateTime date)
+		{
+			if (!_dividends.TryGetValue(date, out List<Stock> stocks))
+				return;
+			foreach (var position in _positions)
+			{
+				if (stocks.Contains(position.Stock))
+				{
+					decimal dividendsPerShare = position.Stock.Dividends[date];
+					decimal dividends = position.Count * dividendsPerShare;
+					Cash += position.IsShort ? -dividends : dividends;
+				}
+			}
 		}
 	}
 }

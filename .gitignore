@@ -1,5 +1,6 @@
 *.vs
 *.csv
+*.json
 *.diagsession
 launchSettings.json
 bin
