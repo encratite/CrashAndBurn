@@ -108,7 +108,7 @@ namespace CrashAndBurn.Momentum.Strategy
 					(_mode == LongShortMode.LongShort && longPositions >= _stocks) ||
 					_mode == LongShortMode.ShortOnly;
 				var stock = GetAndRemoveStock(goShort, ratedStocks);
-				decimal currentPrice = stock.GetPrice(stockMarket.Date);
+				decimal currentPrice = stock.GetPrice(stockMarket.Date) + Constants.Spread;
 				int shares = (int)Math.Floor(fundsPerPosition / currentPrice);
 				if (shares > 0)
 				{

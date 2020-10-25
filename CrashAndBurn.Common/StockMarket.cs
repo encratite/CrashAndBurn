@@ -6,6 +6,8 @@ namespace CrashAndBurn.Common
 {
 	public class StockMarket
 	{
+		private const bool EnableLogging = true;
+
 		private HashSet<Stock> _stocks = new HashSet<Stock>();
 		private SortedDictionary<DateTime, List<Stock>> _dividends = new SortedDictionary<DateTime, List<Stock>>();
 		private List<Position> _positions = new List<Position>();
@@ -55,11 +57,12 @@ namespace CrashAndBurn.Common
 			}
 		}
 
-		public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, decimal stockLendingFee, DateTime date)
+		public void Initialize(decimal cash, decimal orderFees, decimal capitalGainsTax, decimal initialMargin, decimal maintenanceMargin, decimal stockLendingFee, decimal spread, DateTime date)
 		{
 			_orderFees = orderFees;
 			_capitalGainsTax = capitalGainsTax;
 			_stockLendingFee = stockLendingFee;
+			_spread = spread;
 
 			_initialMargin = initialMargin;
 			_maintenanceMargin = maintenanceMargin;
@@ -73,6 +76,12 @@ namespace CrashAndBurn.Common
 			_losses = 0;
 
 			_outstandingStockLendingFees = 0;
+
+			if (EnableLogging)
+			{
+				WriteDate();
+				Output.WriteLine($"Starting with {Cash:C2}");
+			}
 		}
 
 		public void NextDay()
@@ -109,6 +118,11 @@ namespace CrashAndBurn.Common
 			Cash -= price;
 			var position = new Position(stock, count, pricePerShare, false);
 			_positions.Add(position);
+			if (EnableLogging)
+			{
+				WriteDate();
+				Output.WriteLine($"Bought {count} {stock.Id} shares at {pricePerShare:C2} for {price:C2}");
+			}
 			return position;
 		}
 
@@ -125,6 +139,11 @@ namespace CrashAndBurn.Common
 			_initialMarginReserved += initialMargin;
 			var position = new Position(stock, count, pricePerShare, true);
 			_positions.Add(position);
+			if (EnableLogging)
+			{
+				WriteDate();
+				Output.WriteLine($"Shorted {count} {stock.Id} shares at {pricePerShare:C2}");
+			}
 			return position;
 		}
 
@@ -140,11 +159,23 @@ namespace CrashAndBurn.Common
 				BookCapitalGains(capitalGains);
 				decimal initialMargin = GetInitialMargin(position.Count, position.OriginalPrice);
 				_initialMarginReserved -= initialMargin;
+				if (EnableLogging)
+				{
+					WriteDate();
+					Output.Write($"Bought back {position.Count} {position.Stock.Id} shares at {currentPrice:C2}");
+					WriteProfit(capitalGains);
+				}
 			}
 			else
 			{
 				Cash += position.Count * currentPrice - _orderFees;
 				BookCapitalGains(capitalGains);
+				if (EnableLogging)
+				{
+					WriteDate();
+					Output.Write($"Sold {position.Count} {position.Stock.Id} shares at {currentPrice:C2}");
+					WriteProfit(capitalGains);
+				}
 			}
 			_positions.Remove(position);
 		}
@@ -152,9 +183,7 @@ namespace CrashAndBurn.Common
 		public void LiquidateAll()
 		{
 			foreach (var position in _positions.ToList())
-			{
 				Liquidate(position);
-			}
 		}
 
 		public void CashOut()
@@ -162,6 +191,12 @@ namespace CrashAndBurn.Common
 			LiquidateAll();
 			ProcessTaxReturn();
 			ProcessStockLendingFees();
+			if (EnableLogging)
+			{
+				WriteDate();
+				Output.WriteLine($"Cashed out with {Cash:C2}");
+				Output.NewLine();
+			}
 		}
 
 		public decimal GetAvailableFunds()
@@ -288,9 +323,42 @@ namespace CrashAndBurn.Common
 				{
 					decimal dividendsPerShare = position.Stock.Dividends[date];
 					decimal dividends = position.Count * dividendsPerShare;
-					Cash += position.IsShort ? -dividends : dividends;
+					if (position.IsShort)
+					{
+						Cash -= dividends;
+						if (EnableLogging)
+						{
+							WriteDate();
+							Output.Write($"Paid dividends for {position.Count} {position.Stock.Id} shares");
+							WriteProfit(-dividends);
+						}
+					}
+					else
+					{
+						Cash += dividends;
+						BookCapitalGains(dividends);
+						if (EnableLogging)
+						{
+							WriteDate();
+							Output.Write($"Received dividends for {position.Count} {position.Stock.Id} shares");
+							WriteProfit(dividends);
+						}
+					}
 				}
 			}
+		}
+
+		private void WriteDate()
+		{
+			Output.Write($"{Date.ToShortDateString()} ");
+		}
+
+		private void WriteProfit(decimal capitalGains)
+		{
+			var color = capitalGains >= 0.0m ? ConsoleColor.Green : ConsoleColor.Red;
+			Output.Write(" (");
+			Output.Write($"{capitalGains:+$##,#.##;-$##,#.##;$##,#.##}", color);
+			Output.WriteLine(")");
 		}
 	}
 }

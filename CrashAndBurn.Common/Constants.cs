@@ -8,5 +8,6 @@
 		public const decimal InitialMargin = 0.5m;
 		public const decimal MaintenanceMargin = 0.3m;
 		public const decimal StockLendingFee = 0.03m;
+		public const decimal Spread = 0.01m;
 	}
 }

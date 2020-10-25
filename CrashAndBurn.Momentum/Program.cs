@@ -13,6 +13,8 @@ namespace CrashAndBurn.Momentum
 {
 	class Program
 	{
+		private const bool PrintIndividualStrategyPerformance = true;
+
 		static void Main(string[] arguments)
 		{
 			if (arguments.Length != 2)
@@ -49,11 +51,15 @@ namespace CrashAndBurn.Momentum
 				periods++;
 			}
 			*/
+			/*
 			for (int year = firstYear; year <= DateTime.Now.Year - 5; year += 5)
 			{
-				EvaluateStrategies(referenceIndex, stocks, year, DateTime.Now.Year);
+				EvaluateStrategies(referenceIndex, stocks, year, null);
 				periods++;
 			}
+			*/
+			EvaluateStrategies(referenceIndex, stocks, 2005, null);
+			periods++;
 			stopwatch.Stop();
 			Output.WriteLine($"Evaluated all strategies over {periods} periods in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
 		}
@@ -63,7 +69,8 @@ namespace CrashAndBurn.Momentum
 			var dateRange = GetDateRange(stocks);
 			DateTime startDate = GetStartEndDate(firstYear, false, dateRange);
 			DateTime endDate = GetStartEndDate(lastYear, true, dateRange);
-			var strategies = GetStrategies(out List<StrategyClass> strategyClasses);
+			// var strategies = GetStrategies(out List<StrategyClass> strategyClasses);
+			var strategies = GetSpecificStrategy(out List<StrategyClass> strategyClasses);
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 			var strategyQueue = new ConcurrentQueue<BaseStrategy>(strategies);
@@ -88,7 +95,7 @@ namespace CrashAndBurn.Momentum
 			while (strategyQueue.TryDequeue(out BaseStrategy strategy))
 			{
 				var stockMarket = new StockMarket(stocks);
-				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, Constants.StockLendingFee, startDate);
+				stockMarket.Initialize(Constants.InitialCash, Constants.OrderFees, Constants.CapitalGainsTax, Constants.InitialMargin, Constants.MaintenanceMargin, Constants.StockLendingFee, Constants.Spread, startDate);
 				while (stockMarket.Date < endDate)
 				{
 					strategy.Trade(stockMarket);
@@ -113,21 +120,22 @@ namespace CrashAndBurn.Momentum
 			Output.WriteLine($"Strategies sorted by performance, in comparison to index ETF (from {startDate.Year} to {endDate.Year}):", ConsoleColor.White);
 			decimal referenceCash = GetReferenceCash(startDate, endDate, referenceIndex);
 
-			/*
-			strategies.Sort((x, y) => -x.Cash.Value.CompareTo(y.Cash.Value));
-			foreach (var strategy in strategies)
+			if (PrintIndividualStrategyPerformance)
 			{
-				decimal performance = StockMarket.GetPerformance(strategy.Cash.Value, referenceCash);
-				Output.Write($"  {strategy.Name}: {strategy.Cash:C2}");
-				if (strategy.MarginCallCount > 0)
+				strategies.Sort((x, y) => -x.Cash.Value.CompareTo(y.Cash.Value));
+				foreach (var strategy in strategies)
 				{
-					Output.Write(" (");
-					Output.Write(strategy.MarginCallCount.ToString(), ConsoleColor.Red);
-					Output.Write(" margin call(s))");
+					decimal performance = StockMarket.GetPerformance(strategy.Cash.Value, referenceCash);
+					Output.Write($"  {strategy.Name}: {strategy.Cash:C2}");
+					if (strategy.MarginCallCount > 0)
+					{
+						Output.Write(" (");
+						Output.Write(strategy.MarginCallCount.ToString(), ConsoleColor.Red);
+						Output.Write(" margin call(s))");
+					}
+					Output.WritePerformance(strategy.Cash.Value, referenceCash);
 				}
-				Output.WritePerformance(strategy.Cash.Value, referenceCash);
 			}
-			*/
 
 			foreach (var strategyClass in strategyClasses)
 			{
@@ -208,6 +216,16 @@ namespace CrashAndBurn.Momentum
 				}
 			}
 			return strategies;
+		}
+
+		private static List<BaseStrategy> GetSpecificStrategy(out List<StrategyClass> strategyClasses)
+		{
+			strategyClasses = new List<StrategyClass>();
+			var output = new List<BaseStrategy>
+			{
+				new LongShortMomentumStrategy(4, 0.10m, 60, 360, 30, LongShortMode.LongOnly)
+			};
+			return output;
 		}
 
 		private static DateTime GetYearDate(int year)
