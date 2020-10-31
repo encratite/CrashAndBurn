@@ -15,6 +15,7 @@ namespace CrashAndBurn.Momentum.Strategy
 	class LongShortMomentumStrategy : BaseStrategy
 	{
 		private const decimal MinFundsPerPosition = 1000.0m;
+		private const decimal MinFunds = 500.0m;
 
 		private int _stocks;
 		private decimal _stopLossThreshold;
@@ -88,38 +89,55 @@ namespace CrashAndBurn.Momentum.Strategy
 
 		private void Reevaluate(StockMarket stockMarket)
 		{
-			int stocksToAcquire = (_mode == LongShortMode.LongShort ? 2 * _stocks : _stocks) - stockMarket.Positions.Count;
+			int stocksToAcquire = _mode == LongShortMode.LongShort ? 2 * _stocks : _stocks;
 			if (stocksToAcquire == 0)
-			{
 				return;
-			}
 			var ratedStocks = GetStocksByRating(stockMarket);
 			if (ratedStocks.Count < 2 * stocksToAcquire)
-			{
 				return;
-			}
-			decimal availableFunds = stockMarket.GetAvailableFunds();
-			decimal fundsPerPosition = (availableFunds - stocksToAcquire * Constants.OrderFees) / stocksToAcquire;
-			fundsPerPosition = Math.Max(fundsPerPosition, MinFundsPerPosition);
-			for (; stocksToAcquire > 0 && stockMarket.HasEnoughFunds(MinFundsPerPosition); stocksToAcquire--)
+
+			var longStocks = new List<Stock>();
+			var shortStocks = new List<Stock>();
+			for (int i = 0; i < _stocks; i++)
 			{
-				int longPositions = stockMarket.Positions.Count(p => !p.IsShort);
-				bool goShort =
-					(_mode == LongShortMode.LongShort && longPositions >= _stocks) ||
-					_mode == LongShortMode.ShortOnly;
-				var stock = GetAndRemoveStock(goShort, ratedStocks);
+				if (_mode != LongShortMode.ShortOnly)
+				{
+					var longStock = GetAndRemoveStock(false, ratedStocks);
+					longStocks.Add(longStock);
+				}
+				if (_mode != LongShortMode.LongOnly)
+				{
+					var shortStock = GetAndRemoveStock(true, ratedStocks);
+					shortStocks.Add(shortStock);
+				}
+			}
+			var allStocks = longStocks.Concat(shortStocks);
+
+			foreach (var position in stockMarket.Positions.ToList())
+			{
+				var stock = position.Stock;
+				if (longStocks.Contains(stock) || shortStocks.Contains(stock))
+					longStocks.Remove(stock);
+				else
+					stockMarket.Liquidate(position);
+			}
+
+			decimal availableFunds = stockMarket.GetAvailableFunds();
+			decimal fundsPerPosition = (availableFunds - allStocks.Count() * Constants.OrderFees - MinFunds) / stocksToAcquire;
+			if (fundsPerPosition <= 0.0m)
+				return;
+			fundsPerPosition = Math.Max(fundsPerPosition, MinFundsPerPosition);
+			foreach (var stock in allStocks)
+			{
+				bool goShort = shortStocks.Contains(stock);
 				decimal currentPrice = stock.GetPrice(stockMarket.Date) + Constants.Spread;
 				int shares = (int)Math.Floor(fundsPerPosition / currentPrice);
 				if (shares > 0)
 				{
 					if (goShort)
-					{
 						stockMarket.Short(stock, shares);
-					}
 					else
-					{
 						stockMarket.Buy(stock, shares);
-					}
 				}
 			}
 		}

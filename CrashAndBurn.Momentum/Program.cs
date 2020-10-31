@@ -51,14 +51,12 @@ namespace CrashAndBurn.Momentum
 				periods++;
 			}
 			*/
-			/*
 			for (int year = firstYear; year <= DateTime.Now.Year - 5; year += 5)
 			{
 				EvaluateStrategies(referenceIndex, stocks, year, null);
 				periods++;
 			}
-			*/
-			EvaluateStrategies(referenceIndex, stocks, 2005, null);
+			// EvaluateStrategies(referenceIndex, stocks, 2005, null);
 			periods++;
 			stopwatch.Stop();
 			Output.WriteLine($"Evaluated all strategies over {periods} periods in {stopwatch.Elapsed.TotalSeconds:0.0} s.");
@@ -69,8 +67,8 @@ namespace CrashAndBurn.Momentum
 			var dateRange = GetDateRange(stocks);
 			DateTime startDate = GetStartEndDate(firstYear, false, dateRange);
 			DateTime endDate = GetStartEndDate(lastYear, true, dateRange);
-			// var strategies = GetStrategies(out List<StrategyClass> strategyClasses);
-			var strategies = GetSpecificStrategy(out List<StrategyClass> strategyClasses);
+			var strategies = GetStrategies(out List<StrategyClass> strategyClasses);
+			// var strategies = GetSpecificStrategy(out List<StrategyClass> strategyClasses);
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 			var strategyQueue = new ConcurrentQueue<BaseStrategy>(strategies);

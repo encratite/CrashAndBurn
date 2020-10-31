@@ -6,7 +6,7 @@ namespace CrashAndBurn.Common
 {
 	public class StockMarket
 	{
-		private const bool EnableLogging = true;
+		private const bool EnableLogging = false;
 
 		private HashSet<Stock> _stocks = new HashSet<Stock>();
 		private SortedDictionary<DateTime, List<Stock>> _dividends = new SortedDictionary<DateTime, List<Stock>>();
