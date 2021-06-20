@@ -19,22 +19,24 @@ namespace CrashAndBurn.Common
 			string id = Path.GetFileNameWithoutExtension(path);
 			var stockData = StockData.FromFile(path);
 			string jsonPath = Path.Combine(Path.GetDirectoryName(path), $"{id}.json");
-			var dividends = new List<DividendData>();
+			Stock stock;
 			if (File.Exists(jsonPath))
 			{
 				var jsonData = JsonData.Read(jsonPath);
-				dividends = jsonData.Dividends;
+				stock = new Stock(id, stockData, jsonData.Dividends, jsonData.DateFirstAdded);
 			}
-			var stock = new Stock(id, stockData, dividends);
+			else
+				stock = new Stock(id, stockData, new List<DividendData> { }, null);
 			return stock;
 		}
 
-		public Stock(string id, IEnumerable<StockData> history, IEnumerable<DividendData> dividends)
+		public Stock(string id, IEnumerable<StockData> history, IEnumerable<DividendData> dividends, DateTime? dateFirstAdded)
 		{
 			Id = id;
 			_history = GetHistory(history);
 			foreach (var dividendData in dividends)
 				Dividends.Add(dividendData.Date, dividendData.Amount);
+			DateFirstAdded = dateFirstAdded;
 		}
 
 		public override bool Equals(object obj)

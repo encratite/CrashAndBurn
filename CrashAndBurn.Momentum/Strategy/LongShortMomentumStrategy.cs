@@ -162,7 +162,12 @@ namespace CrashAndBurn.Momentum.Strategy
 		{
 			DateTime from = stockMarket.Date - TimeSpan.FromDays(_historyDays);
 			DateTime to = stockMarket.Date - TimeSpan.FromDays(_ignoreDays);
-			var filteredStocks = stockMarket.Stocks.Where(s => s.MaybeGetPrice(from).HasValue && s.MaybeGetPrice(to).HasValue && !stockMarket.Positions.Any(p => p.Stock == s));
+			var filteredStocks = stockMarket.Stocks.Where(s =>
+				s.MaybeGetPrice(from).HasValue &&
+				s.MaybeGetPrice(to).HasValue &&
+				!stockMarket.Positions.Any(p => p.Stock == s) &&
+				(!s.DateFirstAdded.HasValue || s.DateFirstAdded.Value <= stockMarket.Date)
+			);
 			var orderedStocks = filteredStocks.OrderBy(s => s.GetPrice(to) / s.GetPrice(from));
 			var stocks = new LinkedList<Stock>(orderedStocks);
 			return stocks;
