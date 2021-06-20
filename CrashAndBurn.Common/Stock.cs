@@ -11,8 +11,8 @@ namespace CrashAndBurn.Common
 
 		// Symbol or ISIN.
 		public string Id { get; private set; }
-
 		public SortedDictionary<DateTime, decimal> Dividends { get; private set; } = new SortedDictionary<DateTime, decimal>();
+		public DateTime? DateFirstAdded { get; private set; }
 
 		public static Stock FromFile(string path)
 		{
@@ -21,7 +21,10 @@ namespace CrashAndBurn.Common
 			string jsonPath = Path.Combine(Path.GetDirectoryName(path), $"{id}.json");
 			var dividends = new List<DividendData>();
 			if (File.Exists(jsonPath))
-				dividends = DividendData.Read(jsonPath);
+			{
+				var jsonData = JsonData.Read(jsonPath);
+				dividends = jsonData.Dividends;
+			}
 			var stock = new Stock(id, stockData, dividends);
 			return stock;
 		}

@@ -34,19 +34,25 @@ namespace CrashAndBurn.HistoryDownloader
 				using (var browsingContext = BrowsingContext.New(Configuration.Default))
 				{
 					var document = browsingContext.OpenAsync(request => request.Content(html)).Result;
-					var nodes = document.QuerySelectorAll("#constituents td:first-child a.external");
+					var nodes = document.QuerySelectorAll("#constituents tr");
 					var symbolPattern = new Regex("^[A-Z]+$");
 					int counter = 1;
 					int symbolCount = nodes.Count();
 					foreach (var node in nodes)
 					{
-						string symbol = node.TextContent;
-						if (!symbolPattern.IsMatch(symbol))
+						var symbolNode = node.QuerySelector("td:first-child a.external");
+						var dateFirstAddedNode = node.QuerySelector("td:nth-child(7)");
+						if (symbolNode == null || dateFirstAddedNode == null)
+							continue;
+						string symbol = symbolNode.TextContent;
+						string dateFirstAddedString = dateFirstAddedNode.TextContent;
+						DateTime dateFirstAdded;
+						if (!symbolPattern.IsMatch(symbol) || !DateTime.TryParse(dateFirstAddedString, out dateFirstAdded))
 							continue;
 						try
 						{
-							DownloadHistory(symbol, counter, symbolCount, outputDirectory, webClient);
-							DownloadDividends(symbol, counter, symbolCount, outputDirectory, browsingContext, webClient);
+							WriteHistory(symbol, counter, symbolCount, outputDirectory, webClient);
+							WriteJsonData(symbol, counter, symbolCount, outputDirectory, dateFirstAdded, browsingContext, webClient);
 						}
 						catch (Exception exception)
 						{
@@ -59,7 +65,7 @@ namespace CrashAndBurn.HistoryDownloader
 			}
 		}
 
-		private static void DownloadHistory(string symbol, int counter, int symbolCount, string outputDirectory, WebClient webClient)
+		private static void WriteHistory(string symbol, int counter, int symbolCount, string outputDirectory, WebClient webClient)
 		{
 			string yahooUrl = $"https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1=0&period2=2000000000&interval=1d&events=history";
 			string outputPath = Path.Combine(outputDirectory, $"{symbol}.csv");
@@ -84,41 +90,55 @@ namespace CrashAndBurn.HistoryDownloader
 			Output.WriteLine($"Skipping {outputPath} ({counter}/{symbolCount})");
 		}
 
-		private static void DownloadDividends(string symbol, int counter, int symbolCount, string outputDirectory, IBrowsingContext browsingContext, WebClient webClient)
+		private static void WriteJsonData(string symbol, int counter, int symbolCount, string outputDirectory, DateTime dateFirstAdded, IBrowsingContext browsingContext, WebClient webClient)
 		{
 			string outputPath = Path.Combine(outputDirectory, $"{symbol}.json");
 			if (ShouldDownloadFile(outputPath))
 			{
-				string url = $"https://dividata.com/stock/{symbol}/dividend";
-				string html = webClient.DownloadString(url);
-				var document = browsingContext.OpenAsync(request => request.Content(html)).Result;
-				var nodes = document.QuerySelectorAll("table.table tr");
-				var amountPattern = new Regex(@"\d+\.\d+");
 				var dividends = new List<DividendData>();
-				foreach (var node in nodes)
+				try
 				{
-					var dateNode = node.QuerySelector("td.date");
-					if (dateNode == null)
-						continue;
-					if (!DateTime.TryParse(dateNode.TextContent, out DateTime date))
-						continue;
-					var amountNode = node.QuerySelector("td.money");
-					if (amountNode == null)
-						continue;
-					var match = amountPattern.Match(amountNode.TextContent);
-					if (!match.Success)
-						continue;
-					decimal amount = decimal.Parse(match.ToString());
-					var dividendData = new DividendData(date, amount);
-					dividends.Add(dividendData);
+					dividends = DownloadDividends(symbol, browsingContext, webClient);
 				}
-				DividendData.Write(outputPath, dividends);
+				catch
+				{
+				}
+				var jsonData = new JsonData(dividends, dateFirstAdded);
+				JsonData.Write(outputPath, jsonData);
 				WriteDownloadMessage(counter, symbolCount, outputPath);
 			}
 			else
 			{
 				WriteSkipMessage(counter, symbolCount, outputPath);
 			}
+		}
+
+		private static List<DividendData> DownloadDividends(string symbol, IBrowsingContext browsingContext, WebClient webClient)
+		{
+			string url = $"https://dividata.com/stock/{symbol}/dividend";
+			string html = webClient.DownloadString(url);
+			var document = browsingContext.OpenAsync(request => request.Content(html)).Result;
+			var nodes = document.QuerySelectorAll("table.table tr");
+			var amountPattern = new Regex(@"\d+\.\d+");
+			var dividends = new List<DividendData>();
+			foreach (var node in nodes)
+			{
+				var dateNode = node.QuerySelector("td.date");
+				if (dateNode == null)
+					continue;
+				if (!DateTime.TryParse(dateNode.TextContent, out DateTime date))
+					continue;
+				var amountNode = node.QuerySelector("td.money");
+				if (amountNode == null)
+					continue;
+				var match = amountPattern.Match(amountNode.TextContent);
+				if (!match.Success)
+					continue;
+				decimal amount = decimal.Parse(match.ToString());
+				var dividendData = new DividendData(date, amount);
+				dividends.Add(dividendData);
+			}
+			return dividends;
 		}
 
 		private static bool ShouldDownloadFile(string path)
